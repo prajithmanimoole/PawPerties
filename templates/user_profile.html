@@ -1,0 +1,44 @@
+{% extends 'base.html' %}
+
+{% block title %}Your Profile - PropertyChain{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <h2 class="card-title text-center mb-4">Your Profile</h2>
+                    <form method="POST" action="{{ url_for('user_profile') }}">
+                        <div class="form-group">
+                            <label for="username">Username</label>
+                            <input type="text" class="form-control" id="username" name="username" value="{{ user.username }}" readonly>
+                        </div>
+                        <div class="form-group">
+                            <label for="email">Email Address</label>
+                            <input type="email" class="form-control" id="email" name="email" value="{{ user.email }}" readonly>
+                        </div>
+                        <div class="form-group">
+                            <label for="full_name">Full Name</label>
+                            <input type="text" class="form-control" id="full_name" name="full_name" value="{{ user.full_name }}" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="phone">Phone Number</label>
+                            <input type="text" class="form-control" id="phone" name="phone" value="{{ user.phone or '' }}">
+                        </div>
+                        <div class="form-group">
+                            <label for="aadhar">Aadhar Number</label>
+                            <input type="text" class="form-control" id="aadhar" name="aadhar" value="{{ user.aadhar or '' }}" readonly>
+                        </div>
+                        <div class="form-group">
+                            <label for="pan">PAN Number</label>
+                            <input type="text" class="form-control" id="pan" name="pan" value="{{ user.pan or '' }}" readonly>
+                        </div>
+                        <button type="submit" class="btn btn-primary btn-block">Update Profile</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

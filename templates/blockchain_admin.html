@@ -1,0 +1,322 @@
+{% extends "base.html" %}
+
+{% block title %}Blockchain Administration - Property Blockchain{% endblock %}
+
+{% block content %}
+<!-- Loading Overlay -->
+<div id="loadingOverlay" style="display: none;">
+    <div class="loading-content">
+        <div class="loading-spinner"></div>
+        <h3 id="loadingTitle">Processing...</h3>
+        <p id="loadingMessage">Please wait while we complete your request.</p>
+        <div class="loading-progress">
+            <div class="loading-progress-bar"></div>
+        </div>
+        <p class="loading-note">This may take up to a minute depending on network conditions.</p>
+    </div>
+</div>
+
+<style>
+    #loadingOverlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.85);
+        z-index: 9999;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+    
+    .loading-content {
+        text-align: center;
+        color: white;
+        padding: 3rem;
+        border-radius: 15px;
+        background: rgba(255, 255, 255, 0.1);
+        backdrop-filter: blur(10px);
+        max-width: 450px;
+    }
+    
+    .loading-spinner {
+        width: 80px;
+        height: 80px;
+        border: 6px solid rgba(255, 255, 255, 0.2);
+        border-top: 6px solid #3498db;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        margin: 0 auto 1.5rem;
+    }
+    
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+    
+    .loading-content h3 {
+        font-size: 1.5rem;
+        margin-bottom: 0.5rem;
+        color: #3498db;
+    }
+    
+    .loading-content p {
+        margin-bottom: 1rem;
+        color: #ecf0f1;
+    }
+    
+    .loading-progress {
+        width: 100%;
+        height: 8px;
+        background: rgba(255, 255, 255, 0.2);
+        border-radius: 4px;
+        overflow: hidden;
+        margin: 1rem 0;
+    }
+    
+    .loading-progress-bar {
+        height: 100%;
+        width: 30%;
+        background: linear-gradient(90deg, #3498db, #2ecc71);
+        border-radius: 4px;
+        animation: progress 2s ease-in-out infinite;
+    }
+    
+    @keyframes progress {
+        0% { width: 10%; margin-left: 0; }
+        50% { width: 50%; margin-left: 25%; }
+        100% { width: 10%; margin-left: 90%; }
+    }
+    
+    .loading-note {
+        font-size: 0.85rem;
+        color: #bdc3c7 !important;
+        margin-top: 1rem;
+    }
+</style>
+
+<div class="alert alert-danger">
+    <strong>⚠️ Administrator Area:</strong> This section is restricted to system administrators only.
+</div>
+
+<div class="card">
+    <div class="card-header">Blockchain Information</div>
+    
+    <div class="property-detail">
+        <div class="property-label">Total Blocks:</div>
+        <div class="property-value"><strong>{{ blockchain_info.total_blocks }}</strong></div>
+    </div>
+    
+    <div class="property-detail">
+        <div class="property-label">Total Properties:</div>
+        <div class="property-value"><strong>{{ blockchain_info.total_properties }}</strong></div>
+    </div>
+    
+    <div class="property-detail">
+        <div class="property-label">Mining Difficulty:</div>
+        <div class="property-value">{{ blockchain_info.difficulty }}</div>
+    </div>
+    
+    <div class="property-detail">
+        <div class="property-label">Latest Block Hash:</div>
+        <div class="property-value">
+            <span class="hash-text">{{ blockchain_info.latest_hash }}</span>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">Blockchain Validation</div>
+    
+    {% if is_valid %}
+    <div class="alert alert-success">
+        <strong>✅ {{ validation_message }}</strong><br>
+        All blocks are properly linked and integrity is maintained.
+    </div>
+    {% else %}
+    <div class="alert alert-danger">
+        <strong>❌ {{ validation_message }}</strong><br>
+        Blockchain integrity compromised! Immediate investigation required.
+    </div>
+    {% endif %}
+    
+    <a href="{{ url_for('validate_blockchain') }}" class="btn btn-primary">🔍 Run Validation</a>
+</div>
+
+<div class="card">
+    <div class="card-header">💾 Backup & Restore</div>
+    
+    <!-- Backup Buttons -->
+    <h4 style="margin-bottom: 1rem;">Create Backup</h4>
+    <div style="display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.5rem;">
+        <a href="{{ url_for('view_blockchain') }}" class="btn btn-primary">📊 View Full Blockchain</a>
+        
+        <form method="POST" action="{{ url_for('backup_blockchain') }}" style="display: inline;">
+            <button type="submit" class="btn btn-warning">
+                💾 Local Backup
+            </button>
+        </form>
+        
+        <form method="POST" action="{{ url_for('backup_to_ipfs') }}" style="display: inline;">
+            <button type="submit" class="btn btn-success">
+                🌐 IPFS Backup
+            </button>
+        </form>
+    </div>
+    
+    <!-- Restore from Local Backup -->
+    <div style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid #ddd;">
+        <h4 style="margin-bottom: 1rem;">🔄 Restore from Local Backup</h4>
+        <form method="POST" action="{{ url_for('restore_blockchain') }}" id="restoreForm">
+            <div class="form-group">
+                <label for="backup_file" class="form-label">Select Backup File</label>
+                <select name="backup_file" id="backup_file" class="form-input" required>
+                    <option value="">-- Select a backup file --</option>
+                </select>
+                <small style="color: #7f8c8d;">Only .encrypted backup files are shown</small>
+            </div>
+            <button type="submit" class="btn btn-danger">
+                🔄 Restore Local Backup
+            </button>
+        </form>
+    </div>
+    
+    <!-- Restore from IPFS -->
+    <div style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid #ddd;">
+        <h4 style="margin-bottom: 1rem;">🌐 Restore from IPFS</h4>
+        <form method="POST" action="{{ url_for('restore_from_ipfs') }}" id="ipfsRestoreForm">
+            <div class="form-group">
+                <label for="ipfs_cid" class="form-label">IPFS CID (Content Identifier)</label>
+                <input type="text" name="ipfs_cid" id="ipfs_cid" class="form-input" 
+                       placeholder="QmXxx... or bafy..." required>
+                <small style="color: #7f8c8d;">
+                    Enter the CID from a previous IPFS backup (starts with Qm... or ba...)
+                </small>
+            </div>
+            <button type="submit" class="btn btn-danger">
+                🌐 Restore from IPFS
+            </button>
+        </form>
+    </div>
+    
+    <script>
+        // Loading overlay functions
+        function showLoading(title, message) {
+            document.getElementById('loadingTitle').textContent = title;
+            document.getElementById('loadingMessage').textContent = message;
+            document.getElementById('loadingOverlay').style.display = 'flex';
+        }
+        
+        // IPFS Backup form
+        document.querySelector('form[action="{{ url_for("backup_to_ipfs") }}"]').addEventListener('submit', function(e) {
+            if (confirm('Upload blockchain to IPFS (decentralized storage)?')) {
+                showLoading('🌐 Uploading to IPFS...', 'Uploading your blockchain to decentralized storage.');
+            } else {
+                e.preventDefault();
+            }
+        });
+        
+        // IPFS Restore form
+        document.getElementById('ipfsRestoreForm').addEventListener('submit', function(e) {
+            if (confirm('⚠️ WARNING: This will download from IPFS and replace the current blockchain. Are you sure?')) {
+                showLoading('🌐 Restoring from IPFS...', 'Downloading blockchain from decentralized storage. Trying multiple gateways...');
+            } else {
+                e.preventDefault();
+            }
+        });
+        
+        // Local Backup form
+        document.querySelector('form[action="{{ url_for("backup_blockchain") }}"]').addEventListener('submit', function(e) {
+            if (confirm('Create blockchain backup?')) {
+                showLoading('💾 Creating Backup...', 'Saving blockchain to local storage.');
+            } else {
+                e.preventDefault();
+            }
+        });
+        
+        // Local Restore form
+        document.getElementById('restoreForm').addEventListener('submit', function(e) {
+            if (confirm('⚠️ WARNING: This will replace the current blockchain with the backup. Are you sure?')) {
+                showLoading('🔄 Restoring Backup...', 'Loading blockchain from local backup file.');
+            } else {
+                e.preventDefault();
+            }
+        });
+        
+        // Load available backups when page loads
+        fetch('{{ url_for("list_backups") }}')
+            .then(response => response.json())
+            .then(data => {
+                const select = document.getElementById('backup_file');
+                if (data.backups && data.backups.length > 0) {
+                    data.backups.forEach(backup => {
+                        const option = document.createElement('option');
+                        option.value = backup.path;
+                        option.textContent = backup.name;
+                        select.appendChild(option);
+                    });
+                } else {
+                    const option = document.createElement('option');
+                    option.value = '';
+                    option.textContent = 'No backups available';
+                    option.disabled = true;
+                    select.appendChild(option);
+                }
+            })
+            .catch(err => console.error('Failed to load backups:', err));
+    </script>
+    
+    <div class="alert alert-info" style="margin-top: 1.5rem;">
+        <strong>ℹ️ Backup Options:</strong><br>
+        • <strong>Local Backup:</strong> Saves timestamped .encrypted file in the <code>blocks/</code> folder.<br>
+        • <strong>IPFS Backup:</strong> Uploads to Pinata/IPFS decentralized storage. Save the CID to restore later!<br>
+        • <strong>Restore:</strong> Always creates a safety backup before overwriting current blockchain.
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">System Health</div>
+    
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Metric</th>
+                <th>Status</th>
+                <th>Details</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>Blockchain Integrity</td>
+                <td>
+                    {% if is_valid %}
+                    <span class="badge badge-success">✅ Valid</span>
+                    {% else %}
+                    <span class="badge badge-danger">❌ Invalid</span>
+                    {% endif %}
+                </td>
+                <td>{{ validation_message }}</td>
+            </tr>
+            <tr>
+                <td>Total Blocks</td>
+                <td><span class="badge badge-info">{{ blockchain_info.total_blocks }}</span></td>
+                <td>Including genesis block</td>
+            </tr>
+            <tr>
+                <td>Properties Registered</td>
+                <td><span class="badge badge-info">{{ blockchain_info.total_properties }}</span></td>
+                <td>Unique property registrations</td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+<div class="card">
+    <div class="card-header">Quick Navigation</div>
+    <div style="display: flex; gap: 1rem;">
+        <a href="{{ url_for('all_properties') }}" class="btn btn-secondary">📋 All Properties</a>
+        <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">← Back to Dashboard</a>
+    </div>
+</div>
+{% endblock %}

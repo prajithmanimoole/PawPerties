@@ -1,0 +1,141 @@
+{% extends "base.html" %}
+
+{% block title %}Add Property - Property Blockchain{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">Register New Property</div>
+    
+    <form method="POST" action="{{ url_for('add_property') }}">
+        <h3 style="margin-top: 0; color: #2c3e50;">Basic Information</h3>
+        
+        <div class="form-group">
+            <label for="property_key" class="form-label">Property Key *</label>
+            <input type="text" id="property_key" name="property_key" class="form-input" 
+                   placeholder="e.g., PROP-BLR-001" required>
+            <small style="color: #7f8c8d;">Unique identifier for the property</small>
+        </div>
+        
+        <div class="form-group">
+            <label for="owner" class="form-label">Owner Name *</label>
+            <input type="text" id="owner" name="owner" class="form-input" 
+                   placeholder="Full name of the property owner" required>
+        </div>
+        
+        <h3 style="margin-top: 2rem; color: #2c3e50;">Owner Identity (Indian Standards)</h3>
+        
+        <div class="form-group">
+            <label for="aadhar_no" class="form-label">Owner's Aadhar Number * (12 digits)</label>
+            <input type="text" id="aadhar_no" name="aadhar_no" class="form-input" 
+                   pattern="[0-9]{12}" placeholder="e.g., 123456789012" required>
+            <small style="color: #7f8c8d;">Must be exactly 12 digits, unique per person</small>
+        </div>
+        
+        <div class="form-group">
+            <label for="pan_no" class="form-label">Owner's PAN Number * (ABCDE1234F format)</label>
+            <input type="text" id="pan_no" name="pan_no" class="form-input" 
+                   pattern="[A-Z]{5}[0-9]{4}[A-Z]{1}" placeholder="e.g., ABCDE1234F" 
+                   style="text-transform: uppercase;" required>
+            <small style="color: #7f8c8d;">Format: 5 letters, 4 digits, 1 letter</small>
+        </div>
+        
+        <h3 style="margin-top: 2rem; color: #2c3e50;">Property Details</h3>
+        
+        <div class="form-group">
+            <label for="address" class="form-label">Property Address *</label>
+            <input type="text" id="address" name="address" class="form-input" 
+                   placeholder="Complete address" required>
+        </div>
+        
+        <div class="form-group">
+            <label for="pincode" class="form-label">Pincode * (6 digits)</label>
+            <input type="text" id="pincode" name="pincode" class="form-input" 
+                   pattern="[0-9]{6}" placeholder="e.g., 560001" required>
+        </div>
+        
+        <div class="form-group">
+            <label for="value" class="form-label">Property Value (INR) *</label>
+            <input type="number" step="0.01" id="value" name="value" class="form-input" 
+                   placeholder="e.g., 5000000.00" min="0" required>
+            <small style="color: #7f8c8d;">Property value in Indian Rupees</small>
+        </div>
+        
+        <h3 style="margin-top: 2rem; color: #2c3e50;">Legal Details</h3>
+        
+        <div class="form-group">
+            <label for="survey_no" class="form-label">Survey Number *</label>
+            <input type="text" id="survey_no" name="survey_no" class="form-input" 
+                   placeholder="e.g., 238/3a" required>
+            <small style="color: #7f8c8d;">Unique survey/map number for the property</small>
+        </div>
+        
+        <div class="form-group">
+            <label for="rtc_no" class="form-label">RTC Number</label>
+            <input type="text" id="rtc_no" name="rtc_no" class="form-input" 
+                   placeholder="Record of Rights, Tenancy and Crops number">
+        </div>
+        
+        <h3 style="margin-top: 2rem; color: #2c3e50;">Location Details</h3>
+        
+        <div class="form-group">
+            <label for="village" class="form-label">Village</label>
+            <input type="text" id="village" name="village" class="form-input" 
+                   placeholder="e.g., Koramangala">
+        </div>
+        
+        <div class="form-group">
+            <label for="taluk" class="form-label">Taluk/Tehsil</label>
+            <input type="text" id="taluk" name="taluk" class="form-input" 
+                   placeholder="e.g., Bangalore South">
+        </div>
+        
+        <div class="form-group">
+            <label for="district" class="form-label">District</label>
+            <input type="text" id="district" name="district" class="form-input" 
+                   placeholder="e.g., Bangalore Urban">
+        </div>
+        
+        <div class="form-group">
+            <label for="state" class="form-label">State</label>
+            <input type="text" id="state" name="state" class="form-input" 
+                   placeholder="e.g., Karnataka">
+        </div>
+        
+        <h3 style="margin-top: 2rem; color: #2c3e50;">Land Details</h3>
+        
+        <div class="form-group">
+            <label for="land_area" class="form-label">Land Area</label>
+            <input type="text" id="land_area" name="land_area" class="form-input" 
+                   placeholder="e.g., 2400 sq ft, 5 acres, 1100 sq ft">
+            <small style="color: #7f8c8d;">Specify area with units</small>
+        </div>
+        
+        <div class="form-group">
+            <label for="land_type" class="form-label">Land Type</label>
+            <select id="land_type" name="land_type" class="form-select">
+                <option value="">-- Select Land Type --</option>
+                <option value="residential">Residential</option>
+                <option value="commercial">Commercial</option>
+                <option value="agricultural">Agricultural</option>
+                <option value="industrial">Industrial</option>
+            </select>
+        </div>
+        
+        <div class="form-group">
+            <label for="description" class="form-label">Description</label>
+            <textarea id="description" name="description" class="form-input" rows="3" 
+                      placeholder="Additional property details..."></textarea>
+        </div>
+        
+        <div style="display: flex; gap: 1rem; margin-top: 2rem;">
+            <button type="submit" class="btn btn-success">✅ Register Property</button>
+            <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">Cancel</a>
+        </div>
+    </form>
+</div>
+
+<div class="alert alert-info">
+    <strong>ℹ️ Note:</strong> This action will create a new immutable block on the blockchain. 
+    Once registered, the property key cannot be reused. Verify all information before submitting.
+</div>
+{% endblock %}

@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+
+{% block title %}Search Properties - Property Blockchain{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">🔍 Search Properties</div>
+    
+    <form method="POST" action="{{ url_for('search_owner') }}">
+        <div class="form-group">
+            <label for="query" class="form-label">Search</label>
+            <input type="text" id="query" name="query" class="form-input" 
+                   placeholder="Search by name, property ID, survey no, RTC, Aadhar, PAN, location..." 
+                   value="{{ search_query }}" required
+                   style="font-size: 1.1rem; padding: 0.9rem;">
+            <small style="color: #7f8c8d; display: block; margin-top: 0.5rem;">
+                🎯 Smart search across all fields: Owner Name, Property ID, Customer ID, Survey Number, RTC Number, Aadhar, PAN, Village, District, Taluk, Pincode
+            </small>
+        </div>
+        
+        <button type="submit" class="btn btn-primary" style="padding: 0.8rem 2rem; font-size: 1rem;">
+            🔍 Search
+        </button>
+    </form>
+</div>
+
+{% if search_query %}
+<div class="card">
+    <div class="card-header">
+        Results for "{{ search_query }}"
+    </div>
+    
+    {% if properties %}
+    <div style="margin-bottom: 1rem;">
+        <span class="badge badge-success">{{ properties|length }} Property/Properties Found</span>
+    </div>
+    
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Property Key</th>
+                <th>Owner</th>
+                <th>Match</th>
+                <th>Survey No.</th>
+                <th>Location</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for property in properties %}
+            <tr>
+                <td><strong>{{ property.property_key }}</strong></td>
+                <td>{{ property.owner }}</td>
+                <td>
+                    {% set score = property._match_score|default(0) %}
+                    {% set field = property._matched_field|default('') %}
+                    <span class="badge {% if score >= 80 %}badge-success{% elif score >= 60 %}badge-info{% else %}badge-warning{% endif %}" title="Matched on: {{ field }}">
+                        {{ field }}
+                    </span>
+                </td>
+                <td>{{ property.survey_no|default('N/A') }}</td>
+                <td>
+                    {% if property.village %}{{ property.village }}{% endif %}
+                    {% if property.district %}, {{ property.district }}{% endif %}
+                </td>
+                <td>
+                    <a href="{{ url_for('view_property', property_key=property.property_key) }}" 
+                       class="btn btn-primary" style="padding: 0.5rem 1rem; font-size: 0.9rem;">
+                        View Details
+                    </a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    
+    {% else %}
+    <div class="alert alert-warning">
+        <strong>No properties found</strong> for "{{ search_query }}". 
+        Try different keywords or check spelling.
+    </div>
+    {% endif %}
+</div>
+{% endif %}
+
+<div class="card">
+    <div class="card-header">Quick Links</div>
+    <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+        <a href="{{ url_for('all_properties') }}" class="btn btn-secondary">📋 View All Properties</a>
+        <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">← Back to Dashboard</a>
+    </div>
+</div>
+{% endblock %}

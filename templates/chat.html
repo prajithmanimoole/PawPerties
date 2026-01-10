@@ -1,0 +1,292 @@
+{% extends 'base.html' %}
+
+{% block title %}Chat for Appointment #{{ appointment.id }}{% endblock %}
+
+{% block styles %}
+<style>
+    /* Chat container with gradient background */
+    .chat-container {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 20px;
+        padding: 30px;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+        animation: fadeIn 0.5s ease-in;
+    }
+
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    /* Chat header */
+    .chat-header {
+        background: rgba(255, 255, 255, 0.95);
+        border-radius: 15px;
+        padding: 20px;
+        margin-bottom: 20px;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    }
+
+    .chat-header h4 {
+        margin: 0;
+        color: #667eea;
+        font-weight: 600;
+    }
+
+    .chat-header p {
+        margin: 5px 0 0;
+        color: #666;
+        font-size: 14px;
+    }
+
+    /* Chat box */
+    #chat-box {
+        background: rgba(255, 255, 255, 0.98);
+        border-radius: 15px;
+        padding: 20px;
+        height: 450px;
+        overflow-y: auto;
+        margin-bottom: 20px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.05);
+    }
+
+    /* Custom scrollbar */
+    #chat-box::-webkit-scrollbar {
+        width: 8px;
+    }
+
+    #chat-box::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 10px;
+    }
+
+    #chat-box::-webkit-scrollbar-thumb {
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        border-radius: 10px;
+    }
+
+    #chat-box::-webkit-scrollbar-thumb:hover {
+        background: linear-gradient(135deg, #764ba2, #667eea);
+    }
+
+    /* Message bubbles */
+    .message {
+        padding: 12px 16px;
+        border-radius: 18px;
+        max-width: 70%;
+        word-wrap: break-word;
+    }
+
+    .sent {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        align-self: flex-end;
+        margin-left: auto;
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+    }
+
+    .received {
+        background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+        color: #333;
+        align-self: flex-start;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+
+    .message strong {
+        display: block;
+        font-weight: 600;
+        margin-bottom: 4px;
+        font-size: 13px;
+        color: #667eea;
+    }
+
+    .sent strong {
+        color: rgba(255, 255, 255, 0.9);
+    }
+
+    .message p {
+        margin: 0;
+        line-height: 1.5;
+        font-size: 15px;
+    }
+
+    .message small {
+        display: block;
+        margin-top: 6px;
+        font-size: 11px;
+        opacity: 0.7;
+    }
+
+    /* Message form */
+    .message-form-container {
+        background: rgba(255, 255, 255, 0.95);
+        border-radius: 15px;
+        padding: 20px;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    }
+
+    .message-input-group {
+        display: flex;
+        gap: 10px;
+    }
+
+    #message-input {
+        flex: 1;
+        padding: 14px 20px;
+        border: 2px solid transparent;
+        border-radius: 25px;
+        background: #f8f9fa;
+        font-size: 15px;
+        transition: all 0.3s ease;
+    }
+
+    #message-input:focus {
+        outline: none;
+        border-color: #667eea;
+        background: white;
+        box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+    }
+
+    .send-button {
+        padding: 14px 30px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        border-radius: 25px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+    }
+
+    .send-button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+    }
+
+    .send-button:active {
+        transform: translateY(0);
+    }
+
+    /* Empty state */
+    .empty-chat {
+        text-align: center;
+        color: #999;
+        padding: 40px 20px;
+        font-style: italic;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-9 col-lg-8">
+            <div class="chat-container">
+                <div class="chat-header">
+                    <h4>💬 Appointment Chat</h4>
+                    <p>Appointment #{{ appointment.id }} - Property {{ appointment.property_key }}</p>
+                    <div style="margin-top: 10px; padding: 10px; background: #e3f2fd; border-radius: 8px; border-left: 4px solid #667eea;">
+                        <small style="color: #1565c0;">
+                            <strong>💡 Tip:</strong> For basic queries about fees, documents, or processes, use the AI Chatbot (🤖 button at bottom-right corner) for instant answers!
+                        </small>
+                    </div>
+                </div>
+                
+                <div id="chat-box">
+                    <div class="empty-chat">Loading messages...</div>
+                </div>
+                
+                <div class="message-form-container">
+                    <form id="message-form">
+                        <div class="message-input-group">
+                            <input 
+                                type="text" 
+                                id="message-input" 
+                                placeholder="Type your message..." 
+                                autocomplete="off"
+                            >
+                            <button type="submit" class="send-button">Send</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const chatBox = document.getElementById('chat-box');
+        const messageForm = document.getElementById('message-form');
+        const messageInput = document.getElementById('message-input');
+        const appointmentId = "{{ appointment.id }}";
+        const currentUserId = parseInt("{{ current_user.id }}");
+
+        function fetchMessages() {
+            fetch(`/chat/${appointmentId}/messages`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.messages.length === 0) {
+                        chatBox.innerHTML = '<div class="empty-chat">No messages yet. Start the conversation!</div>';
+                    } else {
+                        chatBox.innerHTML = '';
+                        data.messages.forEach(msg => {
+                            const msgElement = document.createElement('div');
+                            msgElement.classList.add('message');
+
+                            if (msg.sender_id === currentUserId) {
+                                msgElement.classList.add('sent');
+                                msgElement.innerHTML = `
+                                    <p>${msg.content}</p>
+                                    <small>${msg.timestamp}</small>
+                                `;
+                            } else {
+                                msgElement.classList.add('received');
+                                msgElement.innerHTML = `
+                                    <strong>${msg.sender_name}</strong>
+                                    <p>${msg.content}</p>
+                                    <small>${msg.timestamp}</small>
+                                `;
+                            }
+                            chatBox.appendChild(msgElement);
+                        });
+                    }
+                    chatBox.scrollTop = chatBox.scrollHeight;
+                });
+        }
+
+        messageForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const content = messageInput.value;
+            if (content.trim() === '') return;
+
+            fetch(`/chat/${appointmentId}/send`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ content: content })
+            }).then(() => {
+                messageInput.value = '';
+                fetchMessages();
+            });
+        });
+
+        setInterval(fetchMessages, 3000); // Refresh every 3 seconds
+        fetchMessages(); // Initial fetch
+        messageInput.focus(); // Focus on the input field
+    });
+</script>
+{% endblock %}

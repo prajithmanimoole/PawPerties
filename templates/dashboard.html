@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Property Blockchain{% endblock %}
+
+{% block content %}
+<h1>Dashboard</h1>
+
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-value">{{ blockchain_info.total_blocks }}</div>
+        <div class="stat-label">Total Blocks</div>
+    </div>
+    
+    <div class="stat-card">
+        <div class="stat-value">{{ blockchain_info.total_properties }}</div>
+        <div class="stat-label">Registered Properties</div>
+    </div>
+    
+    <div class="stat-card">
+        <div class="stat-value">{{ blockchain_info.difficulty }}</div>
+        <div class="stat-label">Mining Difficulty</div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">Blockchain Status</div>
+    <div class="property-detail">
+        <div class="property-label">Latest Block Hash:</div>
+        <div class="property-value">
+            <span class="hash-text">{{ blockchain_info.latest_hash }}</span>
+        </div>
+    </div>
+    <div class="property-detail">
+        <div class="property-label">Your Role:</div>
+        <div class="property-value">
+            <span class="badge {% if current_user.role == 'admin' %}badge-admin{% else %}badge-officer{% endif %}">
+                {{ current_user.role|upper }}
+            </span>
+        </div>
+    </div>
+</div>
+
+{% if recent_properties %}
+<div class="card">
+    <div class="card-header">Recently Updated Properties</div>
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Property Key</th>
+                <th>Owner</th>
+                <th>Address</th>
+                <th>Area (sq ft)</th>
+                <th>Type</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for property in recent_properties %}
+            <tr>
+                <td><strong>{{ property.property_key }}</strong></td>
+                <td>{{ property.owner }}</td>
+                <td>{{ property.address }}</td>
+                <td>{{ property.area }}</td>
+                <td>{{ property.property_type }}</td>
+                <td>
+                    <a href="{{ url_for('view_property', property_key=property.property_key) }}" 
+                       class="btn btn-primary" style="padding: 0.5rem 1rem; font-size: 0.9rem;">
+                        View Details
+                    </a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+
+<div class="card">
+    <div class="card-header">Quick Actions</div>
+    <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+        <a href="{{ url_for('add_property') }}" class="btn btn-success">➕ Add New Property</a>
+        <a href="{{ url_for('transfer_property') }}" class="btn btn-primary">🔄 Transfer Property</a>
+        <a href="{{ url_for('inherit_property') }}" class="btn btn-warning">👥 Record Inheritance</a>
+        <a href="{{ url_for('search_owner') }}" class="btn btn-secondary">🔍 Search by Owner</a>
+        <a href="{{ url_for('all_properties') }}" class="btn btn-secondary">📋 View All Properties</a>
+        {% if current_user.role == 'admin' %}
+        <a href="{{ url_for('blockchain_admin') }}" class="btn btn-danger">⚙️ Blockchain Admin</a>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

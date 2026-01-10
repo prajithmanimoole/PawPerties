@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Property Blockchain System{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    {% block styles %}{% endblock %}
+</head>
+<body>
+    {% if current_user %}
+        <nav class="navbar">
+        <div class="navbar-container">
+            {% if current_user.role == 'user' %}
+                <a href="{{ url_for('user_dashboard') }}" class="navbar-brand">🏢 Property Blockchain</a>
+            {% else %}
+                <a href="{{ url_for('dashboard') }}" class="navbar-brand">🏢 Property Blockchain</a>
+            {% endif %}
+
+            <div class="navbar-menu">
+                {% if current_user.role == 'user' %}
+                    <!-- User Navigation -->
+                    <a href="{{ url_for('user_dashboard') }}" class="navbar-link">Dashboard</a>
+                    <a href="{{ url_for('user_profile') }}" class="navbar-link">Profile</a>
+                {% else %}
+                    <!-- Admin/Officer Navigation -->
+                    <a href="{{ url_for('dashboard') }}" class="navbar-link">Dashboard</a>
+                    <a href="{{ url_for('manage_appointments') }}" class="navbar-link">Appointments</a>
+                    <a href="{{ url_for('add_property') }}" class="navbar-link">Add Property</a>
+                    <a href="{{ url_for('transfer_property') }}" class="navbar-link">Transfer</a>
+                    <a href="{{ url_for('inherit_property') }}" class="navbar-link">Inherit</a>
+                    <a href="{{ url_for('search_owner') }}" class="navbar-link">Search</a>
+                    <a href="{{ url_for('all_properties') }}" class="navbar-link">All Properties</a>
+                    {% if current_user.role == 'admin' %}
+                    <a href="{{ url_for('blockchain_admin') }}" class="navbar-link">⚙️ Admin</a>
+                    {% endif %}
+                {% endif %}
+
+                <span class="navbar-user">
+                    {{ current_user.full_name }}
+                    <span class="badge {% if current_user.role == 'admin' %}badge-admin{% elif current_user.role == 'officer' %}badge-officer{% else %}badge-user{% endif %}">
+                        {{ current_user.role|upper }}
+                    </span>
+                </span>
+                <a href="{{ url_for('logout') }}" class="navbar-link">Logout</a>
+            </div>
+        </div>
+    </nav>
+    {% endif %}
+
+    <div class="container">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                <div class="alert alert-{{ category }}">
+                    {{ message }}
+                </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        {% block content %}{% endblock %}
+    </div>
+    {% block scripts %}{% endblock %}
+
+    {% if current_user and current_user.role in ['user', 'admin'] %}
+    <!-- Floating Chatbot Widget (Users & Admins Only) -->
+    <style>
+        .chatbot-toggle {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+            z-index: 1000;
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+        .chatbot-toggle:hover {
+            transform: scale(1.1);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+        }
+        .chatbot-popup {
+            position: fixed;
+            bottom: 90px;
+            right: 20px;
+            width: 350px;
+            height: 450px;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 5px 30px rgba(0,0,0,0.2);
+            display: none;
+            flex-direction: column;
+            z-index: 999;
+            overflow: hidden;
+        }
+        .chatbot-popup.active {
+            display: flex;
+        }
+        .chatbot-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px;
+            font-weight: bold;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .chatbot-close {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 20px;
+            cursor: pointer;
+        }
+        .chatbot-messages {
+            flex: 1;
+            padding: 15px;
+            overflow-y: auto;
+            background: #f8f9fa;
+        }
+        .chat-msg {
+            margin-bottom: 10px;
+            padding: 10px 14px;
+            border-radius: 18px;
+            max-width: 85%;
+            word-wrap: break-word;
+            font-size: 14px;
+        }
+        .chat-msg.user {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            margin-left: auto;
+            border-bottom-right-radius: 4px;
+        }
+        .chat-msg.bot {
+            background: white;
+            color: #333;
+            border: 1px solid #e0e0e0;
+            border-bottom-left-radius: 4px;
+        }
+        .chatbot-input-area {
+            padding: 10px;
+            border-top: 1px solid #eee;
+            display: flex;
+            gap: 8px;
+            background: white;
+        }
+        .chatbot-input {
+            flex: 1;
+            padding: 10px 15px;
+            border: 1px solid #ddd;
+            border-radius: 20px;
+            outline: none;
+            font-size: 14px;
+        }
+        .chatbot-input:focus {
+            border-color: #667eea;
+        }
+        .chatbot-send {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 10px 18px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .chatbot-send:hover {
+            opacity: 0.9;
+        }
+        .typing-indicator {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 14px;
+        }
+        .typing-indicator .dots {
+            display: flex;
+            gap: 4px;
+        }
+        .typing-indicator span {
+            width: 8px;
+            height: 8px;
+            background: #667eea;
+            border-radius: 50%;
+            animation: typing 1s infinite;
+        }
+        .typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
+        .typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
+        .typing-indicator .thinking-text {
+            font-size: 12px;
+            color: #666;
+            font-style: italic;
+            margin-left: 5px;
+            animation: none;
+            width: auto;
+            height: auto;
+            background: none;
+        }
+        @keyframes typing {
+            0%, 100% { opacity: 0.3; transform: scale(0.8); }
+            50% { opacity: 1; transform: scale(1); }
+        }
+    </style>
+
+    <button class="chatbot-toggle" id="chatbotToggle" title="Chat with AI Assistant">🤖</button>
+    
+    <div class="chatbot-popup" id="chatbotPopup">
+        <div class="chatbot-header">
+            <span>🤖 PawParties Assistant</span>
+            <button class="chatbot-close" id="chatbotClose">&times;</button>
+        </div>
+        <div class="chatbot-messages" id="chatbotMessages">
+            <div class="chat-msg bot">Hello! 👋 I'm your PawParties assistant. I can help with property registration, transfers, inheritance, fees, appointments, blockchain info, and navigating the platform. What would you like to know?</div>
+        </div>
+        <div class="chatbot-input-area">
+            <input type="text" class="chatbot-input" id="chatbotInput" placeholder="Ask me anything..." autocomplete="off">
+            <button class="chatbot-send" id="chatbotSend">Send</button>
+        </div>
+    </div>
+
+    <script>
+        (function() {
+            const toggle = document.getElementById('chatbotToggle');
+            const popup = document.getElementById('chatbotPopup');
+            const closeBtn = document.getElementById('chatbotClose');
+            const input = document.getElementById('chatbotInput');
+            const sendBtn = document.getElementById('chatbotSend');
+            const messages = document.getElementById('chatbotMessages');
+            let isWaiting = false;
+
+            toggle.addEventListener('click', () => {
+                popup.classList.toggle('active');
+                if (popup.classList.contains('active')) {
+                    input.focus();
+                }
+            });
+
+            closeBtn.addEventListener('click', () => {
+                popup.classList.remove('active');
+            });
+
+            function addMessage(text, isUser) {
+                const msg = document.createElement('div');
+                msg.className = 'chat-msg ' + (isUser ? 'user' : 'bot');
+                msg.textContent = text;
+                messages.appendChild(msg);
+                messages.scrollTop = messages.scrollHeight;
+            }
+
+            function showTyping() {
+                const typing = document.createElement('div');
+                typing.className = 'chat-msg bot typing-indicator';
+                typing.id = 'typingIndicator';
+                typing.innerHTML = '<div class="dots"><span></span><span></span><span></span></div><span class="thinking-text">Thinking...</span>';
+                messages.appendChild(typing);
+                messages.scrollTop = messages.scrollHeight;
+            }
+
+            function hideTyping() {
+                const typing = document.getElementById('typingIndicator');
+                if (typing) typing.remove();
+            }
+
+            function sendMessage() {
+                if (isWaiting) return; // Prevent multiple sends while waiting
+                
+                const text = input.value.trim();
+                if (!text) return;
+
+                isWaiting = true;
+                sendBtn.disabled = true;
+                sendBtn.textContent = '...';
+                
+                addMessage(text, true);
+                input.value = '';
+                showTyping();
+
+                fetch('/chatbot/message', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message: text })
+                })
+                .then(res => res.json())
+                .then(data => {
+                    hideTyping();
+                    addMessage(data.response || 'Sorry, I could not process that.', false);
+                })
+                .catch(() => {
+                    hideTyping();
+                    addMessage('Sorry, something went wrong. Please try again.', false);
+                })
+                .finally(() => {
+                    isWaiting = false;
+                    sendBtn.disabled = false;
+                    sendBtn.textContent = 'Send';
+                });
+            }
+
+            sendBtn.addEventListener('click', sendMessage);
+            input.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') sendMessage();
+            });
+        })();
+    </script>
+    {% endif %}
+
+</body>
+</html>

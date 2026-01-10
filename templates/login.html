@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+
+{% block title %}Login - Property Blockchain{% endblock %}
+
+{% block content %}
+<div class="login-container">
+    <div class="login-card">
+        <div class="login-header">
+            <h1 class="login-title">🏢 Property Registration</h1>
+            <p class="login-subtitle">Blockchain Authentication System</p>
+        </div>
+        
+        <form method="POST" action="{{ url_for('login') }}">
+            <div class="form-group">
+                <label for="username" class="form-label">Login ID</label>
+                <input type="text" id="username" name="username" class="form-input" 
+                       placeholder="Enter Username / PAN / Aadhar" required autofocus>
+                <small style="color: #7f8c8d; font-size: 0.85rem;">You can use your Username, PAN, or Aadhar number</small>
+            </div>
+            
+            <div class="form-group">
+                <label for="password" class="form-label">Password</label>
+                <div style="position: relative;">
+                    <input type="password" id="password" name="password" class="form-input" 
+                           placeholder="Enter password" required>
+                    <button type="button" onclick="togglePassword()" 
+                            style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); border: none; background: none; cursor: pointer; font-size: 1.2rem;" 
+                            title="Show/Hide Password">
+                        <span id="toggleIcon">👁️</span>
+                    </button>
+                </div>
+            </div>
+            
+            <script>
+            function togglePassword() {
+                const passwordField = document.getElementById('password');
+                const toggleIcon = document.getElementById('toggleIcon');
+                
+                if (passwordField.type === 'password') {
+                    passwordField.type = 'text';
+                    toggleIcon.textContent = '🙈';
+                } else {
+                    passwordField.type = 'password';
+                    toggleIcon.textContent = '👁️';
+                }
+            }
+            </script>
+            
+            <button type="submit" class="btn btn-primary" style="width: 100%;">
+                Login
+            </button>
+            <div style="text-align: center; margin-top: 1rem;">
+                <p>Don't have an account? <a href="{{ url_for('register') }}">Sign Up</a></p>
+            </div>
+        </form>
+        
+        <div style="margin-top: 2rem; padding: 1rem; background-color: #f8f9fa; border-radius: 4px; font-size: 0.85rem;">
+            <strong>Default Credentials:</strong><br>
+            Admin: admin / admin123<br>
+            Officer: officer1 / officer123
+        </div>
+    </div>
+</div>
+{% endblock %}

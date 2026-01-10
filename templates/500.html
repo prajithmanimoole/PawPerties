@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+
+{% block title %}500 - Internal Server Error{% endblock %}
+
+{% block content %}
+<div class="card" style="text-align: center; padding: 3rem;">
+    <h1 style="font-size: 6rem; color: #e74c3c; margin: 0;">500</h1>
+    <h2 style="color: #2c3e50; margin: 1rem 0;">Internal Server Error</h2>
+    <p style="color: #7f8c8d; font-size: 1.1rem; margin: 1.5rem 0;">
+        Something went wrong on our end. The error has been logged and we'll look into it.
+    </p>
+    
+    <div class="alert alert-warning" style="margin: 2rem auto; max-width: 600px; text-align: left;">
+        <strong>⚠️ What you can do:</strong>
+        <ul style="margin: 1rem 0 0 1.5rem;">
+            <li>Try refreshing the page</li>
+            <li>Go back to the previous page</li>
+            <li>Return to the dashboard and try again</li>
+            <li>If the problem persists, contact your system administrator</li>
+        </ul>
+    </div>
+    
+    <div style="margin-top: 2rem;">
+        <a href="{{ url_for('dashboard') }}" class="btn btn-primary" style="margin: 0.5rem;">
+            🏠 Go to Dashboard
+        </a>
+        <button onclick="history.back()" class="btn btn-secondary" style="margin: 0.5rem;">
+            ← Go Back
+        </button>
+    </div>
+</div>
+{% endblock %}

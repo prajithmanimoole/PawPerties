@@ -1,0 +1,64 @@
+{% extends 'base.html' %}
+
+{% block title %}Manage Appointments{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <h2 class="mb-4">Manage Appointments</h2>
+
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Property Key</th>
+                        <th>Type</th>
+                        <th>User Name</th>
+                        <th>Contact</th>
+                        <th>Preferred Date & Time</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for appt in appointments %}
+                    <tr>
+                        <td>{{ appt.id }}</td>
+                        <td>{{ appt.property_key }}</td>
+                        <td>{{ appt.appointment_type|title }}</td>
+                        <td>{{ appt.full_name }}</td>
+                        <td>{{ appt.email }}<br>{{ appt.phone_number }}</td>
+                        <td>{{ appt.preferred_date.strftime('%Y-%m-%d') }} at {{ appt.preferred_time.strftime('%I:%M %p') }}</td>
+                        <td>
+                            <span class="badge badge-{{ 'success' if appt.status == 'confirmed' else 'warning' if appt.status == 'pending' else 'secondary' }}">
+                                {{ appt.status|title }}
+                            </span>
+                        </td>
+                        <td class="d-flex flex-column align-items-start">
+                            <a href="{{ url_for('view_chat', appointment_id=appt.id) }}" class="btn btn-sm btn-info mb-1 w-100">Chat</a>
+                            {% if appt.status == 'pending' %}
+                            <div class="d-flex w-100">
+                                <form action="{{ url_for('update_appointment_status', appointment_id=appt.id) }}" method="POST" class="mr-1">
+                                    <input type="hidden" name="status" value="confirmed">
+                                    <button type="submit" class="btn btn-sm btn-success w-100">Accept</button>
+                                </form>
+                                <form action="{{ url_for('update_appointment_status', appointment_id=appt.id) }}" method="POST">
+                                    <input type="hidden" name="status" value="rejected">
+                                    <button type="submit" class="btn btn-sm btn-danger w-100">Reject</button>
+                                </form>
+                            </div>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="8" class="text-center">No appointments found.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

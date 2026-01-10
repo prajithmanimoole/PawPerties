@@ -1,0 +1,101 @@
+{% extends 'base.html' %}
+
+{% block title %}Schedule Appointment - {{ appointment_type|title }} Property{% endblock %}
+
+{% block styles %}
+<style>
+    /* Style for Sundays */
+    input[type="date"]::-webkit-calendar-picker-indicator {
+        background: url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0Ij48cGF0aCBkPSJNMjAgM2gtMVYxYy0xLjEtLjktMy0xLTMtMXMtMyAxLTMgMVYzaC02djJoMTZWM2gtMXptMCAxN2gtMTZ2LTJoMTZ2MnptMC00aC0xNnYtMmgxNnYyem0wLTRoLTE2di0yaDE2djJ6bTAtNGgtMTZ2LTJoMTZ2MnoiLz48L3N2Zz4=) no-repeat;
+    }
+    input[type="date"]:in-range::-webkit-datetime-edit-day-field:not(:valid) {
+        color: red !important;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <h2 class="card-title text-center mb-4">Schedule Appointment for {{ appointment_type|title }}</h2>
+                    <p class="text-center text-muted">Property Key: <strong>{{ property_key }}</strong></p>
+
+                    <form method="POST" action="{{ url_for('schedule_appointment', property_key=property_key, appointment_type=appointment_type) }}">
+                        
+                        <div class="form-group">
+                            <label for="full_name">Full Name</label>
+                            <input type="text" class="form-control" id="full_name" name="full_name" value="{{ current_user.full_name }}" required>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group col-md-6">
+                                <label for="phone_number">Phone Number</label>
+                                <input type="tel" class="form-control" id="phone_number" name="phone_number" required>
+                            </div>
+                            <div class="form-group col-md-6">
+                                <label for="email">Email Address</label>
+                                <input type="email" class="form-control" id="email" name="email" required>
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group col-md-6">
+                                <label for="preferred_date">Preferred Date</label>
+                                <input type="date" class="form-control" id="preferred_date" name="preferred_date" required>
+                            </div>
+                            <div class="form-group col-md-6">
+                                <label for="preferred_time">Preferred Time</label>
+                                <input type="time" class="form-control" id="preferred_time" name="preferred_time" required>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="notes">Notes (Optional)</label>
+                            <textarea class="form-control" id="notes" name="notes" rows="3" placeholder="Any additional information for the officer..."></textarea>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary btn-block">Submit Appointment Request</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const dateInput = document.getElementById('preferred_date');
+        const timeInput = document.getElementById('preferred_time');
+
+        // Set min date to today
+        const today = new Date().toISOString().split('T')[0];
+        dateInput.setAttribute('min', today);
+
+        // Disable Sundays
+        dateInput.addEventListener('input', function() {
+            const selectedDate = new Date(this.value);
+            if (selectedDate.getUTCDay() === 0) { // 0 = Sunday
+                alert('Sundays are holidays. Please select a different day.');
+                this.value = '';
+            }
+        });
+
+        // Restrict time input
+        timeInput.setAttribute('min', '08:00');
+        timeInput.setAttribute('max', '18:00');
+
+        timeInput.addEventListener('input', function() {
+            const selectedTime = this.value;
+            if (selectedTime < '08:00' || selectedTime > '18:00') {
+                alert('Please select a time between 8:00 AM and 6:00 PM.');
+                this.value = '';
+            }
+        });
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,151 @@
+{% extends "base.html" %}
+
+{% block title %}Full Blockchain - Property Blockchain{% endblock %}
+
+{% block content %}
+<style>
+    .block-summary {
+        cursor: pointer;
+        padding: 1rem;
+        background: #f8f9fa;
+        border-radius: 4px;
+        margin-bottom: 0.5rem;
+        border-left: 4px solid #3498db;
+        transition: all 0.3s ease;
+    }
+    .block-summary.genesis {
+        border-left-color: #27ae60;
+    }
+    .block-summary:hover {
+        background: #e9ecef;
+        transform: translateX(5px);
+    }
+    .block-details {
+        display: none;
+        padding: 1rem;
+        margin-top: 0.5rem;
+        background: white;
+        border-radius: 4px;
+        border: 1px solid #dee2e6;
+    }
+    .block-details.expanded {
+        display: block;
+        animation: slideDown 0.3s ease;
+    }
+    @keyframes slideDown {
+        from {
+            opacity: 0;
+            transform: translateY(-10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+    .toggle-icon {
+        display: inline-block;
+        transition: transform 0.3s ease;
+        margin-left: 0.5rem;
+        font-weight: bold;
+    }
+    .toggle-icon.expanded {
+        transform: rotate(180deg);
+    }
+    .hash-preview {
+        font-family: monospace;
+        color: #7f8c8d;
+        font-size: 0.9em;
+    }
+</style>
+
+<div class="alert alert-danger">
+    <strong>⚠️ Administrator View:</strong> Complete blockchain data for technical review.
+</div>
+
+<div class="card">
+    <div class="card-header">Complete Blockchain ({{ blockchain|length }} Blocks)</div>
+    
+    {% for block in blockchain %}
+    <div class="block-info" style="margin-bottom: 1.5rem;">
+        <!-- Minimized Summary View -->
+        <div class="block-summary {% if block.index == 0 %}genesis{% endif %}" onclick="toggleBlockDetails({{ loop.index0 }})" style="cursor: pointer;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div style="flex: 1;">
+                    <h3 style="margin: 0; display: inline-block;">
+                        Block #{{ block.index }}
+                        {% if block.index == 0 %}
+                        <span class="badge badge-success">Genesis Block</span>
+                        {% endif %}
+                    </h3>
+                    <span class="badge badge-info" style="margin-left: 1rem;">{{ block.data.type|default('unknown')|title }}</span>
+                </div>
+                <span class="toggle-icon" id="block-icon-{{ loop.index0 }}">▼</span>
+            </div>
+            <div style="margin-top: 0.5rem; display: grid; grid-template-columns: auto 1fr; gap: 0.5rem 1rem; font-size: 0.9em;">
+                <span style="color: #7f8c8d;">📅 Timestamp:</span>
+                <span>{{ block.timestamp }}</span>
+                <span style="color: #7f8c8d;">🔗 Prev Hash:</span>
+                <span class="hash-preview">{{ block.previous_hash[:16] }}...{{ block.previous_hash[-16:] }}</span>
+                <span style="color: #7f8c8d;">🔐 Block Hash:</span>
+                <span class="hash-preview">{{ block.hash[:16] }}...{{ block.hash[-16:] }}</span>
+            </div>
+        </div>
+        
+        <!-- Expanded Details View -->
+        <div class="block-details" id="block-details-{{ loop.index0 }}">
+            <div class="property-detail">
+                <div class="property-label">Property Key:</div>
+                <div class="property-value">{{ block.property_key }}</div>
+            </div>
+            
+            <div class="property-detail">
+                <div class="property-label">Full Previous Hash:</div>
+                <div class="property-value">
+                    <span class="hash-text">{{ block.previous_hash }}</span>
+                </div>
+            </div>
+            
+            <div class="property-detail">
+                <div class="property-label">Full Block Hash:</div>
+                <div class="property-value">
+                    <span class="hash-text">{{ block.hash }}</span>
+                </div>
+            </div>
+            
+            <div class="property-detail">
+                <div class="property-label">Block Data:</div>
+                <div class="property-value">
+                    <pre style="background-color: #f8f9fa; padding: 1rem; border-radius: 4px; overflow-x: auto;">{{ block.data | tojson(indent=2) }}</pre>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<div class="card">
+    <div class="card-header">Actions</div>
+    <div style="display: flex; gap: 1rem;">
+        <a href="{{ url_for('blockchain_admin') }}" class="btn btn-secondary">← Back to Admin</a>
+        <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">← Back to Dashboard</a>
+    </div>
+</div>
+
+<script>
+    function toggleBlockDetails(index) {
+        const detailsDiv = document.getElementById('block-details-' + index);
+        const icon = document.getElementById('block-icon-' + index);
+        
+        if (detailsDiv.classList.contains('expanded')) {
+            detailsDiv.classList.remove('expanded');
+            icon.classList.remove('expanded');
+        } else {
+            detailsDiv.classList.add('expanded');
+            icon.classList.add('expanded');
+        }
+    }
+    
+    // Optional: Expand genesis block by default
+    // toggleBlockDetails(0);
+</script>
+{% endblock %}

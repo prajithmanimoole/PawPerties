@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+
+{% block title %}All Properties - Property Blockchain{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">All Registered Properties</div>
+    
+    {% if properties %}
+    <div style="margin-bottom: 1rem;">
+        <span class="badge badge-success">{{ properties|length }} Total Properties</span>
+    </div>
+    
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Property Key</th>
+                <th>Current Owner</th>
+                <th>Address</th>
+                <th>Survey Number</th>
+                <th>Land Area</th>
+                <th>Type</th>
+                <th>Last Updated</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for property in properties %}
+            <tr>
+                <td><strong>{{ property.property_key }}</strong></td>
+                <td>{{ property.owner }}</td>
+                <td>{{ property.address }}</td>
+                <td>{{ property.survey_no|default('N/A') }}</td>
+                <td>{{ property.land_area|default('N/A') }}</td>
+                <td><span class="badge badge-info">{{ property.land_type|default('N/A') }}</span></td>
+                <td>{{ property.last_updated[:10] if property.last_updated else 'N/A' }}</td>
+                <td>
+                    <a href="{{ url_for('view_property', property_key=property.property_key) }}" 
+                       class="btn btn-primary" style="padding: 0.5rem 1rem; font-size: 0.9rem;">
+                        View
+                    </a>
+                    <a href="{{ url_for('property_history', property_key=property.property_key) }}" 
+                       class="btn btn-secondary" style="padding: 0.5rem 1rem; font-size: 0.9rem;">
+                        History
+                    </a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    
+    {% else %}
+    <div class="alert alert-info">
+        No properties registered yet. Start by adding a new property.
+    </div>
+    {% endif %}
+</div>
+
+<div class="card">
+    <div class="card-header">Actions</div>
+    <div style="display: flex; gap: 1rem;">
+        <a href="{{ url_for('add_property') }}" class="btn btn-success">➕ Add New Property</a>
+        <a href="{{ url_for('search_owner') }}" class="btn btn-secondary">🔍 Search by Owner</a>
+        <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">← Back to Dashboard</a>
+    </div>
+</div>
+{% endblock %}

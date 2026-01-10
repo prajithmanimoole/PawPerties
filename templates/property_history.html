@@ -1,0 +1,266 @@
+{% extends "base.html" %}
+
+{% block title %}Property History - Property Blockchain{% endblock %}
+
+{% block content %}
+<style>
+    .transaction-summary {
+        cursor: pointer;
+        padding: 1rem;
+        background: #f8f9fa;
+        border-radius: 4px;
+        margin-bottom: 0.5rem;
+        border-left: 4px solid #3498db;
+        transition: all 0.3s ease;
+    }
+    .transaction-summary:hover {
+        background: #e9ecef;
+        transform: translateX(5px);
+    }
+    .transaction-details {
+        display: none;
+        padding: 1rem;
+        margin-top: 0.5rem;
+        background: white;
+        border-radius: 4px;
+        border: 1px solid #dee2e6;
+    }
+    .transaction-details.expanded {
+        display: block;
+        animation: slideDown 0.3s ease;
+    }
+    @keyframes slideDown {
+        from {
+            opacity: 0;
+            transform: translateY(-10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+    .toggle-icon {
+        display: inline-block;
+        transition: transform 0.3s ease;
+        margin-left: 0.5rem;
+        font-weight: bold;
+    }
+    .toggle-icon.expanded {
+        transform: rotate(180deg);
+    }
+</style>
+
+<div class="card">
+    <div class="card-header">Transaction History: {{ property_key }}</div>
+    
+    {% if history %}
+    <div style="margin-bottom: 1rem;">
+        <span class="badge badge-info">{{ history|length }} Transaction(s) Found</span>
+    </div>
+    
+    {% for transaction in history %}
+    <div class="block-info" style="margin-bottom: 1.5rem;">
+        <!-- Minimized Summary View -->
+        <div class="transaction-summary" onclick="toggleDetails({{ loop.index0 }})" style="cursor: pointer;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <h3 style="margin: 0; display: inline-block;">Block #{{ transaction.index }}</h3>
+                    <span class="badge {% if transaction.data.type == 'registration' %}badge-success{% elif transaction.data.transfer_reason == 'inheritance' %}badge-warning{% else %}badge-info{% endif %}" style="margin-left: 1rem;">
+                        {% if transaction.data.type == 'registration' %}Registration{% elif transaction.data.transfer_reason == 'inheritance' %}Inheritance{% else %}Transfer{% endif %}
+                    </span>
+                    <span style="color: #7f8c8d; margin-left: 1rem;">📅 {{ transaction.timestamp }}</span>
+                </div>
+                <span class="toggle-icon" id="icon-{{ loop.index0 }}">▼</span>
+            </div>
+        </div>
+        
+        <!-- Expanded Details View -->
+        <div class="transaction-details" id="details-{{ loop.index0 }}">
+            <div class="property-detail">
+                <div class="property-label">Transaction Type:</div>
+                <div class="property-value"><strong>{{ transaction.data.type|title }}</strong></div>
+            </div>
+        
+        {% if transaction.data.type == 'registration' %}
+        <div class="property-detail">
+            <div class="property-label">Initial Owner:</div>
+            <div class="property-value">{{ transaction.data.owner }}</div>
+        </div>
+        {% if transaction.data.aadhar_no %}
+        <div class="property-detail">
+            <div class="property-label">Owner's Aadhar:</div>
+            <div class="property-value">
+                {% if current_user.role in ['admin', 'officer'] %}
+                    {{ transaction.data.aadhar_no }}
+                {% else %}
+                    {{ transaction.data.aadhar_no | mask_aadhar }}
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+        {% if transaction.data.pan_no %}
+        <div class="property-detail">
+            <div class="property-label">Owner's PAN:</div>
+            <div class="property-value">
+                {% if current_user.role in ['admin', 'officer'] %}
+                    {{ transaction.data.pan_no }}
+                {% else %}
+                    {{ transaction.data.pan_no | mask_pan }}
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+        <div class="property-detail">
+            <div class="property-label">Address:</div>
+            <div class="property-value">{{ transaction.data.address }}</div>
+        </div>
+        {% if transaction.data.survey_no %}
+        <div class="property-detail">
+            <div class="property-label">Survey Number:</div>
+            <div class="property-value">{{ transaction.data.survey_no }}</div>
+        </div>
+        {% endif %}
+        {% if transaction.data.value %}
+        <div class="property-detail">
+            <div class="property-label">Property Value:</div>
+            <div class="property-value">₹{{ "{:,.2f}".format(transaction.data.value) }}</div>
+        </div>
+        {% endif %}
+        {% if transaction.data.land_details and transaction.data.land_details.area %}
+        <div class="property-detail">
+            <div class="property-label">Land Area:</div>
+            <div class="property-value">{{ transaction.data.land_details.area }}</div>
+        </div>
+        {% endif %}
+        {% if transaction.data.land_details and transaction.data.land_details.type %}
+        <div class="property-detail">
+            <div class="property-label">Land Type:</div>
+            <div class="property-value">{{ transaction.data.land_details.type }}</div>
+        </div>
+        {% endif %}
+        {% elif transaction.data.type == 'transfer' and transaction.data.transfer_reason != 'inheritance' %}
+        <div class="property-detail">
+            <div class="property-label">Previous Owner:</div>
+            <div class="property-value">{{ transaction.data.previous_owner }}</div>
+        </div>
+        <div class="property-detail">
+            <div class="property-label">New Owner:</div>
+            <div class="property-value">{{ transaction.data.new_owner }}</div>
+        </div>
+        {% if transaction.data.new_owner_aadhar %}
+        <div class="property-detail">
+            <div class="property-label">New Owner's Aadhar:</div>
+            <div class="property-value">
+                {% if current_user.role in ['admin', 'officer'] %}
+                    {{ transaction.data.new_owner_aadhar }}
+                {% else %}
+                    {{ transaction.data.new_owner_aadhar | mask_aadhar }}
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+        {% if transaction.data.new_owner_pan %}
+        <div class="property-detail">
+            <div class="property-label">New Owner's PAN:</div>
+            <div class="property-value">
+                {% if current_user.role in ['admin', 'officer'] %}
+                    {{ transaction.data.new_owner_pan }}
+                {% else %}
+                    {{ transaction.data.new_owner_pan | mask_pan }}
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+        {% if transaction.data.transfer_value %}
+        <div class="property-detail">
+            <div class="property-label">Transfer Value:</div>
+            <div class="property-value">₹{{ "{:,.2f}".format(transaction.data.transfer_value) }}</div>
+        </div>
+        {% endif %}
+        {% if transaction.data.stamp_duty_paid %}
+        <div class="property-detail">
+            <div class="property-label">Stamp Duty Paid:</div>
+            <div class="property-value">₹{{ "{:,.2f}".format(transaction.data.stamp_duty_paid) }}</div>
+        </div>
+        {% endif %}
+        {% if transaction.data.registration_fee %}
+        <div class="property-detail">
+            <div class="property-label">Registration Fee:</div>
+            <div class="property-value">₹{{ "{:,.2f}".format(transaction.data.registration_fee) }}</div>
+        </div>
+        {% endif %}
+        {% elif transaction.data.transfer_reason == 'inheritance' %}
+        <div class="property-detail">
+            <div class="property-label">Previous Owner (Deceased):</div>
+            <div class="property-value">{{ transaction.data.previous_owner }}</div>
+        </div>
+        <div class="property-detail">
+            <div class="property-label">Heir:</div>
+            <div class="property-value">{{ transaction.data.new_owner }}</div>
+        </div>
+        {% if transaction.data.new_owner_aadhar %}
+        <div class="property-detail">
+            <div class="property-label">Heir's Aadhar:</div>
+            <div class="property-value">{{ transaction.data.new_owner_aadhar }}</div>
+        </div>
+        {% endif %}
+        {% if transaction.data.new_owner_pan %}
+        <div class="property-detail">
+            <div class="property-label">Heir's PAN:</div>
+            <div class="property-value">{{ transaction.data.new_owner_pan }}</div>
+        </div>
+        {% endif %}
+        {% if transaction.data.additional_info.relationship %}
+        <div class="property-detail">
+            <div class="property-label">Relationship:</div>
+            <div class="property-value">{{ transaction.data.additional_info.relationship }}</div>
+        </div>
+        {% endif %}
+        {% if transaction.data.additional_info.legal_heir_certificate_no %}
+        <div class="property-detail">
+            <div class="property-label">Legal Heir Certificate:</div>
+            <div class="property-value">{{ transaction.data.additional_info.legal_heir_certificate_no }}</div>
+        </div>
+        {% endif %}
+        {% endif %}
+        
+        </div>
+    </div>
+    {% endfor %}
+    
+    {% else %}
+    <div class="alert alert-warning">No transaction history found for this property.</div>
+    {% endif %}
+</div>
+
+<div class="card">
+    <div class="card-header">Actions</div>
+    <div style="display: flex; gap: 1rem;">
+        <a href="{{ url_for('view_property', property_key=property_key) }}" 
+           class="btn btn-primary">View Current State</a>
+        {% if current_user.role in ['admin', 'officer'] %}
+            <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">← Back to Dashboard</a>
+        {% else %}
+            <a href="{{ url_for('user_dashboard') }}" class="btn btn-secondary">← Back to Dashboard</a>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+    function toggleDetails(index) {
+        const detailsDiv = document.getElementById('details-' + index);
+        const icon = document.getElementById('icon-' + index);
+        
+        if (detailsDiv.classList.contains('expanded')) {
+            detailsDiv.classList.remove('expanded');
+            icon.classList.remove('expanded');
+        } else {
+            detailsDiv.classList.add('expanded');
+            icon.classList.add('expanded');
+        }
+    }
+    
+    // Optional: Expand first transaction by default
+    // toggleDetails(0);
+</script>
+{% endblock %}

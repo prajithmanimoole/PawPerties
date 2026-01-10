@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+
+{% block title %}Transfer Property - Property Blockchain{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">Transfer Property Ownership</div>
+    
+    <form method="POST" action="{{ url_for('transfer_property') }}">
+        <h3 style="margin-top: 0; color: #2c3e50;">Property Identification</h3>
+        
+        <div class="form-group">
+            <label for="property_key" class="form-label">Property Key *</label>
+            <input type="text" id="property_key" name="property_key" class="form-input" 
+                   placeholder="e.g., PROP-BLR-001" required>
+            <small style="color: #7f8c8d;">The unique identifier of the property to transfer</small>
+        </div>
+        
+        <div class="form-group">
+            <label for="from_owner" class="form-label">Current Owner *</label>
+            <input type="text" id="from_owner" name="from_owner" class="form-input" 
+                   placeholder="Full name of current owner" required>
+            <small style="color: #7f8c8d;">Must match the registered owner name</small>
+        </div>
+        
+        <h3 style="margin-top: 2rem; color: #2c3e50;">New Owner Details</h3>
+        
+        <div class="form-group">
+            <label for="new_owner" class="form-label">New Owner Name *</label>
+            <input type="text" id="new_owner" name="new_owner" class="form-input" 
+                   placeholder="Full name of new owner" required>
+        </div>
+        
+        <div class="form-group">
+            <label for="new_owner_aadhar" class="form-label">New Owner's Aadhar Number * (12 digits)</label>
+            <input type="text" id="new_owner_aadhar" name="new_owner_aadhar" class="form-input" 
+                   pattern="[0-9]{12}" placeholder="e.g., 123456789012" required>
+            <small style="color: #7f8c8d;">Must be exactly 12 digits, unique per person</small>
+        </div>
+        
+        <div class="form-group">
+            <label for="new_owner_pan" class="form-label">New Owner's PAN Number * (ABCDE1234F format)</label>
+            <input type="text" id="new_owner_pan" name="new_owner_pan" class="form-input" 
+                   pattern="[A-Z]{5}[0-9]{4}[A-Z]{1}" placeholder="e.g., ABCDE1234F" 
+                   style="text-transform: uppercase;" required>
+            <small style="color: #7f8c8d;">Format: 5 letters, 4 digits, 1 letter</small>
+        </div>
+        
+        <h3 style="margin-top: 2rem; color: #2c3e50;">Transaction Details (Optional - Auto-calculated if not provided)</h3>
+        
+        <div class="form-group">
+            <label for="transfer_value" class="form-label">Transfer Value (INR)</label>
+            <input type="number" step="0.01" id="transfer_value" name="transfer_value" class="form-input" 
+                   placeholder="e.g., 5000000.00 (leave blank to use property value)" min="0">
+            <small style="color: #7f8c8d;">Agreed transaction value in Indian Rupees (defaults to property value)</small>
+        </div>
+        
+        <div class="form-group">
+            <label for="stamp_duty_paid" class="form-label">Stamp Duty Paid (INR)</label>
+            <input type="number" step="0.01" id="stamp_duty_paid" name="stamp_duty_paid" class="form-input" 
+                   placeholder="e.g., 100000.00 (auto: 2% of transfer value)" min="0">
+            <small style="color: #7f8c8d;">Stamp duty paid (auto-calculated as 2% if left blank)</small>
+        </div>
+        
+        <div class="form-group">
+            <label for="registration_fee" class="form-label">Registration Fee Paid (INR)</label>
+            <input type="number" step="0.01" id="registration_fee" name="registration_fee" class="form-input" 
+                   placeholder="e.g., 50000.00 (auto: 5% of transfer value)" min="0">
+            <small style="color: #7f8c8d;">Registration fee paid (auto-calculated as 5% if left blank)</small>
+        </div>
+        
+        <div style="display: flex; gap: 1rem; margin-top: 2rem;">
+            <button type="submit" class="btn btn-primary">🔄 Transfer Ownership</button>
+            <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">Cancel</a>
+        </div>
+    </form>
+</div>
+
+<div class="alert alert-warning">
+    <strong>⚠️ Important:</strong> Property transfer creates a new immutable block. 
+    Ensure current owner name matches exactly. You can verify ownership by viewing the property first.
+</div>
+
+<div class="card">
+    <div class="card-header">Need to verify ownership?</div>
+    <p>Use the search feature to find and verify property details before transferring.</p>
+    <a href="{{ url_for('search_owner') }}" class="btn btn-secondary">🔍 Search Properties</a>
+    <a href="{{ url_for('all_properties') }}" class="btn btn-secondary">📋 View All Properties</a>
+</div>
+{% endblock %}

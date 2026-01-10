@@ -1,0 +1,182 @@
+{% extends "base.html" %}
+
+{% block title %}Property Details - Property Blockchain{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">Property Details: {{ property.property_key }}</div>
+    
+    <div class="property-detail">
+        <div class="property-label">Property Key:</div>
+        <div class="property-value"><strong>{{ property.property_key }}</strong></div>
+    </div>
+    
+    <div class="property-detail">
+        <div class="property-label">Current Owner:</div>
+        <div class="property-value"><strong>{{ property.owner }}</strong></div>
+    </div>
+    
+    <div class="property-detail">
+        <div class="property-label">Address:</div>
+        <div class="property-value">{{ property.address }}</div>
+    </div>
+    
+    {% if property.pincode %}
+    <div class="property-detail">
+        <div class="property-label">Pincode:</div>
+        <div class="property-value">{{ property.pincode }}</div>
+    </div>
+    {% endif %}
+    
+    {% if property.value %}
+    <div class="property-detail">
+        <div class="property-label">Property Value:</div>
+        <div class="property-value">₹{{ "{:,.2f}".format(property.value) }}</div>
+    </div>
+    {% endif %}
+    
+    <h3 style="margin-top: 2rem; color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 0.5rem;">Owner Identity</h3>
+    
+    {% if property.aadhar_no %}
+    <div class="property-detail">
+        <div class="property-label">Owner's Aadhar:</div>
+        <div class="property-value">
+            {% if current_user.role in ['admin', 'officer'] %}
+                {{ property.aadhar_no }}
+            {% else %}
+                {{ property.aadhar_no | mask_aadhar }}
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+    
+    {% if property.pan_no %}
+    <div class="property-detail">
+        <div class="property-label">Owner's PAN:</div>
+        <div class="property-value">
+            {% if current_user.role in ['admin', 'officer'] %}
+                {{ property.pan_no }}
+            {% else %}
+                {{ property.pan_no | mask_pan }}
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+    
+    {% if property.customer_key %}
+    <div class="property-detail">
+        <div class="property-label">Customer Key:</div>
+        <div class="property-value"><span class="badge badge-info">{{ property.customer_key }}</span></div>
+    </div>
+    {% endif %}
+    
+    <h3 style="margin-top: 2rem; color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 0.5rem;">Legal Details</h3>
+    
+    {% if property.survey_no %}
+    <div class="property-detail">
+        <div class="property-label">Survey Number:</div>
+        <div class="property-value">{{ property.survey_no }}</div>
+    </div>
+    {% endif %}
+    
+    {% if property.rtc_no %}
+    <div class="property-detail">
+        <div class="property-label">RTC Number:</div>
+        <div class="property-value">{{ property.rtc_no }}</div>
+    </div>
+    {% endif %}
+    
+    <h3 style="margin-top: 2rem; color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 0.5rem;">Location Details</h3>
+    
+    {% if property.village %}
+    <div class="property-detail">
+        <div class="property-label">Village:</div>
+        <div class="property-value">{{ property.village }}</div>
+    </div>
+    {% endif %}
+    
+    {% if property.taluk %}
+    <div class="property-detail">
+        <div class="property-label">Taluk:</div>
+        <div class="property-value">{{ property.taluk }}</div>
+    </div>
+    {% endif %}
+    
+    {% if property.district %}
+    <div class="property-detail">
+        <div class="property-label">District:</div>
+        <div class="property-value">{{ property.district }}</div>
+    </div>
+    {% endif %}
+    
+    {% if property.state %}
+    <div class="property-detail">
+        <div class="property-label">State:</div>
+        <div class="property-value">{{ property.state }}</div>
+    </div>
+    {% endif %}
+    
+    <h3 style="margin-top: 2rem; color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 0.5rem;">Land Details</h3>
+    
+    {% if property.land_area %}
+    <div class="property-detail">
+        <div class="property-label">Land Area:</div>
+        <div class="property-value">{{ property.land_area }}</div>
+    </div>
+    {% endif %}
+    
+    {% if property.land_type %}
+    <div class="property-detail">
+        <div class="property-label">Land Type:</div>
+        <div class="property-value">
+            <span class="badge badge-info">{{ property.land_type }}</span>
+        </div>
+    </div>
+    {% endif %}
+    
+    {% if property.description %}
+    <div class="property-detail">
+        <div class="property-label">Description:</div>
+        <div class="property-value">{{ property.description }}</div>
+    </div>
+    {% endif %}
+    
+    <h3 style="margin-top: 2rem; color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 0.5rem;">Blockchain Metadata</h3>
+    
+    {% if property.registered_at %}
+    <div class="property-detail">
+        <div class="property-label">Registration Date:</div>
+        <div class="property-value">{{ property.registered_at }}</div>
+    </div>
+    {% endif %}
+    
+    {% if property.last_updated %}
+    <div class="property-detail">
+        <div class="property-label">Last Updated:</div>
+        <div class="property-value">{{ property.last_updated }}</div>
+    </div>
+    {% endif %}
+</div>
+
+<div class="card">
+    <div class="card-header">Actions</div>
+    <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+        <a href="{{ url_for('property_history', property_key=property.property_key) }}" 
+           class="btn btn-primary">📜 View Transaction History</a>
+        {% if user.role == 'user' %}
+        <a href="{{ url_for('schedule_appointment', property_key=property.property_key, appointment_type='transfer') }}" class="btn btn-success">🔄 Schedule Transfer</a>
+        <a href="{{ url_for('schedule_appointment', property_key=property.property_key, appointment_type='inheritance') }}" class="btn btn-warning">👥 Schedule Inheritance</a>
+        <a href="{{ url_for('user_dashboard') }}" class="btn btn-secondary">← Back to Dashboard</a>
+        {% else %}
+        <a href="{{ url_for('transfer_property') }}" class="btn btn-success">🔄 Transfer Ownership</a>
+        <a href="{{ url_for('inherit_property') }}" class="btn btn-warning">👥 Record Inheritance</a>
+        <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">← Back to Dashboard</a>
+        {% endif %}
+    </div>
+</div>
+
+<div class="alert alert-success">
+    <strong>✅ Blockchain Verified:</strong> This property information is retrieved from the immutable blockchain 
+    and represents the current state after processing all recorded transactions.
+</div>
+{% endblock %}

@@ -1,0 +1,191 @@
+{% extends "base.html" %}
+
+{% block title %}Advanced Property Search - Property Blockchain{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <span>🔎 Advanced Property Search</span>
+        <a href="{{ url_for('search_owner') }}" class="btn btn-secondary" style="float: right; padding: 0.4rem 1rem; font-size: 0.9rem;">
+            👤 Search by Owner
+        </a>
+    </div>
+    
+    <p style="color: #666; margin-bottom: 1.5rem;">
+        Search properties by any combination of fields. All fields support partial matching.
+    </p>
+    
+    <form method="POST" action="{{ url_for('comprehensive_search') }}">
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem;">
+            <!-- Property Identifiers -->
+            <div class="form-group">
+                <label for="property_key" class="form-label">🏠 Property ID</label>
+                <input type="text" id="property_key" name="property_key" class="form-input" 
+                       placeholder="e.g., PROP-001"
+                       value="{{ search_params.get('property_key', '') }}">
+            </div>
+            
+            <div class="form-group">
+                <label for="customer_key" class="form-label">👤 Customer ID</label>
+                <input type="text" id="customer_key" name="customer_key" class="form-input" 
+                       placeholder="e.g., CUST-XXXXXXXX"
+                       value="{{ search_params.get('customer_key', '') }}">
+            </div>
+            
+            <!-- Survey & RTC -->
+            <div class="form-group">
+                <label for="survey_no" class="form-label">📐 Survey Number</label>
+                <input type="text" id="survey_no" name="survey_no" class="form-input" 
+                       placeholder="Enter survey number"
+                       value="{{ search_params.get('survey_no', '') }}">
+            </div>
+            
+            <div class="form-group">
+                <label for="rtc_no" class="form-label">📄 RTC Number</label>
+                <input type="text" id="rtc_no" name="rtc_no" class="form-input" 
+                       placeholder="Enter RTC number"
+                       value="{{ search_params.get('rtc_no', '') }}">
+            </div>
+            
+            <!-- Identity Documents -->
+            <div class="form-group">
+                <label for="aadhar_no" class="form-label">🪪 Aadhar Number</label>
+                <input type="text" id="aadhar_no" name="aadhar_no" class="form-input" 
+                       placeholder="12-digit Aadhar"
+                       value="{{ search_params.get('aadhar_no', '') }}">
+            </div>
+            
+            <div class="form-group">
+                <label for="pan_no" class="form-label">💳 PAN Number</label>
+                <input type="text" id="pan_no" name="pan_no" class="form-input" 
+                       placeholder="e.g., ABCDE1234F"
+                       value="{{ search_params.get('pan_no', '') }}" style="text-transform: uppercase;">
+            </div>
+            
+            <!-- Location -->
+            <div class="form-group">
+                <label for="village" class="form-label">🏘️ Village</label>
+                <input type="text" id="village" name="village" class="form-input" 
+                       placeholder="Village name"
+                       value="{{ search_params.get('village', '') }}">
+            </div>
+            
+            <div class="form-group">
+                <label for="taluk" class="form-label">🗺️ Taluk</label>
+                <input type="text" id="taluk" name="taluk" class="form-input" 
+                       placeholder="Taluk name"
+                       value="{{ search_params.get('taluk', '') }}">
+            </div>
+            
+            <div class="form-group">
+                <label for="district" class="form-label">🏛️ District</label>
+                <input type="text" id="district" name="district" class="form-input" 
+                       placeholder="District name"
+                       value="{{ search_params.get('district', '') }}">
+            </div>
+            
+            <div class="form-group">
+                <label for="pincode" class="form-label">📮 Pincode</label>
+                <input type="text" id="pincode" name="pincode" class="form-input" 
+                       placeholder="6-digit pincode"
+                       value="{{ search_params.get('pincode', '') }}">
+            </div>
+        </div>
+        
+        <div style="margin-top: 1.5rem; display: flex; gap: 1rem;">
+            <button type="submit" class="btn btn-primary">🔍 Search Properties</button>
+            <a href="{{ url_for('comprehensive_search') }}" class="btn btn-secondary">🔄 Clear All</a>
+        </div>
+    </form>
+</div>
+
+{% if has_search %}
+<div class="card">
+    <div class="card-header">
+        Search Results
+        {% if search_params %}
+        <span style="font-weight: normal; font-size: 0.9rem; color: #666; margin-left: 1rem;">
+            Filters: 
+            {% for key, value in search_params.items() %}
+                <span class="badge badge-info" style="margin-left: 0.3rem;">{{ key }}: {{ value }}</span>
+            {% endfor %}
+        </span>
+        {% endif %}
+    </div>
+    
+    {% if properties %}
+    <div style="margin-bottom: 1rem;">
+        <span class="badge badge-success">{{ properties|length }} Property/Properties Found</span>
+    </div>
+    
+    <div style="overflow-x: auto;">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Property Key</th>
+                    <th>Owner</th>
+                    <th>Customer ID</th>
+                    <th>Survey No.</th>
+                    <th>RTC No.</th>
+                    <th>Village/District</th>
+                    <th>Matched Fields</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for property in properties %}
+                <tr>
+                    <td><strong>{{ property.property_key }}</strong></td>
+                    <td>{{ property.owner }}</td>
+                    <td><small>{{ property.customer_key|default('N/A') }}</small></td>
+                    <td>{{ property.survey_no|default('N/A') }}</td>
+                    <td>{{ property.rtc_no|default('N/A') }}</td>
+                    <td>
+                        {% if property.village %}{{ property.village }}{% endif %}
+                        {% if property.district %}<br><small>{{ property.district }}</small>{% endif %}
+                    </td>
+                    <td>
+                        {% for field in property._matched_fields|default([]) %}
+                            <span class="badge badge-success" style="margin: 2px;">{{ field }}</span>
+                        {% endfor %}
+                    </td>
+                    <td>
+                        <a href="{{ url_for('view_property', property_key=property.property_key) }}" 
+                           class="btn btn-primary" style="padding: 0.4rem 0.8rem; font-size: 0.85rem;">
+                            View
+                        </a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    
+    {% else %}
+    <div class="alert alert-warning">
+        <strong>No properties found</strong> matching your search criteria. 
+        Try adjusting your filters or using fewer search terms.
+    </div>
+    {% endif %}
+</div>
+{% endif %}
+
+<div class="card">
+    <div class="card-header">Search Tips</div>
+    <ul style="color: #666; line-height: 1.8;">
+        <li><strong>Partial Matching:</strong> All fields support partial matches. For example, entering "560" in pincode will match all pincodes containing "560".</li>
+        <li><strong>Multiple Fields:</strong> When using multiple fields, ALL conditions must match (AND logic).</li>
+        <li><strong>Case Insensitive:</strong> All searches are case-insensitive.</li>
+        <li><strong>Aadhar Search:</strong> Spaces and dashes in Aadhar numbers are ignored during search.</li>
+    </ul>
+</div>
+
+<div class="card">
+    <div class="card-header">Quick Links</div>
+    <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+        <a href="{{ url_for('search_owner') }}" class="btn btn-info">👤 Search by Owner Name</a>
+        <a href="{{ url_for('all_properties') }}" class="btn btn-secondary">📋 View All Properties</a>
+        <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">← Back to Dashboard</a>
+    </div>
+</div>
+{% endblock %}

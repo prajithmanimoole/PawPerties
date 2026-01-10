@@ -1,0 +1,100 @@
+{% extends 'base.html' %}
+
+{% block title %}AI Assistant - PawParties{% endblock %}
+
+{% block styles %}
+<style>
+    #chat-container {
+        max-width: 800px;
+        margin: 0 auto;
+        border: 1px solid #ddd;
+        border-radius: 10px;
+        overflow: hidden;
+    }
+    #chat-box {
+        height: 400px;
+        overflow-y: auto;
+        padding: 20px;
+        display: flex;
+        flex-direction: column;
+    }
+    .message {
+        padding: 10px 15px;
+        border-radius: 20px;
+        margin-bottom: 10px;
+        max-width: 80%;
+    }
+    .user-message {
+        background-color: #007bff;
+        color: white;
+        align-self: flex-end;
+    }
+    .bot-message {
+        background-color: #f1f0f0;
+        align-self: flex-start;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <h2 class="text-center mb-4">🤖 PawParties AI Assistant</h2>
+    <div id="chat-container" class="card shadow-sm">
+        <div id="chat-box" class="card-body">
+            <div class="message bot-message">Hello! I'm your PawParties guide. I can help you understand how to use the site, explain property registration processes, answer questions about fees, and guide you through our features. What would you like to know?</div>
+        </div>
+        <div class="card-footer">
+            <form id="message-form">
+                <div class="input-group">
+                    <input type="text" id="message-input" class="form-control" placeholder="Type your message...">
+                    <div class="input-group-append">
+                        <button type="submit" class="btn btn-primary">Send</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const chatBox = document.getElementById('chat-box');
+        const messageForm = document.getElementById('message-form');
+        const messageInput = document.getElementById('message-input');
+
+        messageForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const message = messageInput.value.trim();
+            if (message === '') return;
+
+            // Display user message
+            const userMsgElement = document.createElement('div');
+            userMsgElement.classList.add('message', 'user-message');
+            userMsgElement.textContent = message;
+            chatBox.appendChild(userMsgElement);
+            chatBox.scrollTop = chatBox.scrollHeight;
+            messageInput.value = '';
+
+            // Send message to backend
+            fetch('/chatbot/message', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ message: message })
+            })
+            .then(response => response.json())
+            .then(data => {
+                // Display bot response
+                const botMsgElement = document.createElement('div');
+                botMsgElement.classList.add('message', 'bot-message');
+                botMsgElement.textContent = data.response;
+                chatBox.appendChild(botMsgElement);
+                chatBox.scrollTop = chatBox.scrollHeight;
+            });
+        });
+    });
+</script>
+{% endblock %}
