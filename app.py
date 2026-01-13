@@ -3,6 +3,11 @@ Main Flask Application
 Property Registration Blockchain System
 """
 
+from dotenv import load_dotenv
+
+# Load environment variables from .env file FIRST (before importing blockchain)
+load_dotenv()
+
 from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify
 from config import Config
 from models import db, User, Property, Appointment, Message, BlockchainBackup, init_db
@@ -15,6 +20,8 @@ import shutil
 import glob
 import copy
 import atexit
+import sys
+import warnings
 from google import genai
 
 
@@ -28,6 +35,20 @@ init_db(app)
 # Initialize blockchain (singleton instance with auto-save after operations and auto-restore)
 blockchain = PropertyBlockchain(verbose=False, auto_restore=True)
 print(f"✓ Blockchain initialized with {len(blockchain.chain)} blocks")
+
+# Restore from database if blockchain only has genesis block
+with app.app_context():
+    if len(blockchain.chain) == 1:  # Only genesis block
+        try:
+            latest_backup = BlockchainBackup.query.order_by(BlockchainBackup.created_at.desc()).first()
+            if latest_backup:
+                blockchain.load_from_encrypted_data(latest_backup.backup_data)
+                print(f"✓ Blockchain restored from database: {latest_backup.name}")
+                print(f"✓ Restored {len(blockchain.chain)} blocks from backup")
+            else:
+                print("ℹ No database backup found - starting fresh")
+        except Exception as e:
+            print(f"⚠ Could not restore from database: {str(e)}")
 
 # Initialize Gemini AI
 gemini_client = None
@@ -51,22 +72,21 @@ chatbot_service = ChatbotService(blockchain, gemini_client)
 # ============================================================================
 
 def auto_backup_on_shutdown():
-    """Automatically backup blockchain to database when server shuts down"""
+    """Automatically backup blockchain to database and IPFS when server shuts down"""
+    # Suppress socket errors during Flask shutdown on Windows
+    original_stderr = sys.stderr
     try:
-        # Try to create application context if not available
-        from flask import has_app_context, current_app
-
-        app_context_needed = not has_app_context()
-        if app_context_needed:
-            if current_app:
-                ctx = current_app.app_context()
-                ctx.push()
-            else:
-                print("\n⚠️ Auto-backup skipped: No Flask application available")
-                return
-
-        try:
-            print("\n🔄 Auto-backing up blockchain to database...")
+        # Redirect stderr temporarily to suppress threading errors
+        import io
+        sys.stderr = io.StringIO()
+        
+        # Restore stderr for our messages
+        sys.stderr = original_stderr
+        
+        print("\n🔄 Auto-backing up blockchain...")
+        
+        # Use app context for database operations
+        with app.app_context():
             # Get encrypted blockchain data
             encrypted_data = blockchain.get_encrypted_data()
 
@@ -84,23 +104,38 @@ def auto_backup_on_shutdown():
 
             db.session.add(backup)
             db.session.commit()
-            print(f"✅ Auto-backup completed: {display_name}")
+            print(f"✅ Database backup completed: {display_name}")
 
             # Clean up old backups (keep only last 10)
             cleanup_old_backups()
-
-        finally:
-            # Clean up application context if we created it
-            if app_context_needed and 'ctx' in locals():
-                ctx.pop()
+            
+            # Save to file for IPFS backup
+            os.makedirs("blocks", exist_ok=True)
+            with open("blocks/blockchain_data.encrypted", "w") as f:
+                f.write(encrypted_data)
+            print(f"✅ File backup saved to blocks/blockchain_data.encrypted")
+        
+        # Backup to IPFS (doesn't need app context)
+        print("\n🌐 Backing up blockchain to IPFS...")
+        ipfs_cid = blockchain.backup_to_ipfs()
+        if ipfs_cid:
+            print(f"✅ IPFS backup completed!")
+            print(f"   CID: {ipfs_cid}")
+            print(f"   View at: https://gateway.pinata.cloud/ipfs/{ipfs_cid}")
+        else:
+            print("⚠️ IPFS backup skipped (API keys not configured or error occurred)")
 
     except Exception as e:
+        sys.stderr = original_stderr
         print(f"❌ Auto-backup failed: {str(e)}")
         try:
-            if has_app_context():
+            with app.app_context():
                 db.session.rollback()
         except:
             pass  # Ignore rollback errors if no session
+    finally:
+        # Always restore stderr
+        sys.stderr = original_stderr
 
 def cleanup_old_backups():
     """Keep only the last 10 backups in database"""
@@ -120,7 +155,10 @@ def cleanup_old_backups():
 
     except Exception as e:
         print(f"❌ Backup cleanup failed: {str(e)}")
-        db.session.rollback()
+        try:
+            db.session.rollback()
+        except:
+            pass  # Ignore rollback errors
 
 # Register auto-backup function to run on shutdown
 atexit.register(auto_backup_on_shutdown)
