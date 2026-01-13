@@ -1313,27 +1313,29 @@ class PropertyBlockchain:
 
     def _auto_restore_from_ipfs(self) -> bool:
         """
-        Automatically restore blockchain from Pinata IPFS using CID from pinata_cid.txt.
+        Automatically restore blockchain from Pinata IPFS using CID from environment variable or pinata_cid.txt.
         This is called first during initialization for seamless cloud restoration.
 
         Returns:
             bool: True if restoration was successful
         """
         try:
-            # Check if CID file exists in project root
-            if not os.path.exists(self.PINATA_CID_FILE):
-                self._log(f"No {self.PINATA_CID_FILE} found in project root - skipping IPFS auto-restore")
-                return False
-
-            # Read CID from file
-            with open(self.PINATA_CID_FILE, 'r') as f:
-                cid = f.read().strip()
-
+            # Priority 1: Check for CID in environment variable (for Render deployment)
+            cid = os.environ.get('PINATA_RESTORE_CID', '').strip()
+            
+            if cid:
+                self._log(f"Found Pinata CID in environment variable PINATA_RESTORE_CID: {cid}")
+            # Priority 2: Check if CID file exists in project root (for local development)
+            elif os.path.exists(self.PINATA_CID_FILE):
+                with open(self.PINATA_CID_FILE, 'r') as f:
+                    cid = f.read().strip()
+                if cid:
+                    self._log(f"Found Pinata CID in {self.PINATA_CID_FILE}: {cid}")
+            
             if not cid:
-                self._log(f"{self.PINATA_CID_FILE} is empty - skipping IPFS auto-restore", "error")
+                self._log(f"No PINATA_RESTORE_CID env var or {self.PINATA_CID_FILE} found - skipping IPFS auto-restore")
                 return False
 
-            self._log(f"Found Pinata CID in {self.PINATA_CID_FILE}: {cid}")
             self._log("Attempting to restore blockchain from Pinata IPFS...")
 
             # Attempt IPFS restoration
