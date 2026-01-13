@@ -5,7 +5,7 @@ Property Registration Blockchain System
 
 from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify
 from config import Config
-from models import db, User, Property, Appointment, Message, init_db
+from models import db, User, Property, Appointment, Message, BlockchainBackup, init_db
 from auth import AuthService, login_required, admin_required, officer_or_admin_required, user_required
 from blockchain import PropertyBlockchain
 from chatbot_service import ChatbotService
@@ -13,6 +13,8 @@ from datetime import datetime
 import os
 import shutil
 import glob
+import copy
+import atexit
 from google import genai
 
 
@@ -23,8 +25,8 @@ app.config.from_object(Config)
 # Initialize database
 init_db(app)
 
-# Initialize blockchain (singleton instance with auto-save after operations)
-blockchain = PropertyBlockchain(verbose=False)
+# Initialize blockchain (singleton instance with auto-save after operations and auto-restore)
+blockchain = PropertyBlockchain(verbose=False, auto_restore=True)
 print(f"✓ Blockchain initialized with {len(blockchain.chain)} blocks")
 
 # Initialize Gemini AI
@@ -42,6 +44,86 @@ except Exception as e:
 
 # Initialize Chatbot Service
 chatbot_service = ChatbotService(blockchain, gemini_client)
+
+
+# ============================================================================
+# AUTO BACKUP ON SHUTDOWN
+# ============================================================================
+
+def auto_backup_on_shutdown():
+    """Automatically backup blockchain to database when server shuts down"""
+    try:
+        # Try to create application context if not available
+        from flask import has_app_context, current_app
+
+        app_context_needed = not has_app_context()
+        if app_context_needed:
+            if current_app:
+                ctx = current_app.app_context()
+                ctx.push()
+            else:
+                print("\n⚠️ Auto-backup skipped: No Flask application available")
+                return
+
+        try:
+            print("\n🔄 Auto-backing up blockchain to database...")
+            # Get encrypted blockchain data
+            encrypted_data = blockchain.get_encrypted_data()
+
+            # Create auto-backup record
+            timestamp = datetime.now()
+            display_name = f"Auto-backup - {timestamp.strftime('%d/%m/%Y %H:%M:%S')}"
+            filename = f"auto_backup_{timestamp.strftime('%Y%m%d_%H%M%S')}.encrypted"
+
+            backup = BlockchainBackup(
+                name=display_name,
+                filename=filename,
+                backup_data=encrypted_data,
+                created_by=1  # System user (admin)
+            )
+
+            db.session.add(backup)
+            db.session.commit()
+            print(f"✅ Auto-backup completed: {display_name}")
+
+            # Clean up old backups (keep only last 10)
+            cleanup_old_backups()
+
+        finally:
+            # Clean up application context if we created it
+            if app_context_needed and 'ctx' in locals():
+                ctx.pop()
+
+    except Exception as e:
+        print(f"❌ Auto-backup failed: {str(e)}")
+        try:
+            if has_app_context():
+                db.session.rollback()
+        except:
+            pass  # Ignore rollback errors if no session
+
+def cleanup_old_backups():
+    """Keep only the last 10 backups in database"""
+    try:
+        # Get all backups ordered by creation date (newest first)
+        all_backups = BlockchainBackup.query.order_by(BlockchainBackup.created_at.desc()).all()
+
+        if len(all_backups) > 10:
+            # Keep first 10, delete the rest
+            backups_to_delete = all_backups[10:]
+
+            for backup in backups_to_delete:
+                db.session.delete(backup)
+
+            db.session.commit()
+            print(f"🧹 Cleaned up {len(backups_to_delete)} old backups (kept last 10)")
+
+    except Exception as e:
+        print(f"❌ Backup cleanup failed: {str(e)}")
+        db.session.rollback()
+
+# Register auto-backup function to run on shutdown
+atexit.register(auto_backup_on_shutdown)
 
 
 # ============================================================================
@@ -459,13 +541,17 @@ def property_history(property_key):
         return redirect(url_for('dashboard'))
 
     # Process history to remove/mask sensitive data
+    # IMPORTANT: Use deep copy to avoid mutating the original blockchain data
     processed_history = []
     for block in history:
+        # Create a deep copy to ensure we never mutate the original blockchain
+        block_copy = copy.deepcopy(block)
+        
         # 1. Remove hash information
-        block.pop('hash', None)
-        block.pop('previous_hash', None)
+        block_copy.pop('hash', None)
+        block_copy.pop('previous_hash', None)
 
-        data = block.get('data', {})
+        data = block_copy.get('data', {})
         
         # 2. Mask Aadhaar numbers that do not belong to the current owner
         if data.get('type') == 'registration':
@@ -478,7 +564,7 @@ def property_history(property_key):
             if data.get('new_owner_aadhar') and data['new_owner_aadhar'] != current_owner_aadhar:
                 data['new_owner_aadhar'] = f"********{data['new_owner_aadhar'][-4:]}"
 
-        processed_history.append(block)
+        processed_history.append(block_copy)
     
     return render_template('property_history.html',
                          user=user,
@@ -644,13 +730,14 @@ def blockchain_admin():
     """Blockchain administration dashboard"""
     user = AuthService.get_current_user()
     blockchain_info = blockchain.get_chain_info()
-    is_valid, validation_message = blockchain.is_valid()
-    
+    is_valid, validation_message, validation_logs = blockchain.validate_with_details()
+
     return render_template('blockchain_admin.html',
                          user=user,
                          blockchain_info=blockchain_info,
                          is_valid=is_valid,
-                         validation_message=validation_message)
+                         validation_message=validation_message,
+                         validation_logs=validation_logs)
 
 
 @app.route('/admin/blockchain/validate')
@@ -682,105 +769,130 @@ def view_blockchain():
 @app.route('/admin/blockchain/backup', methods=['POST'])
 @admin_required
 def backup_blockchain():
-    """Create blockchain backup with encrypted format"""
-    # Ensure blocks folder exists
-    blocks_folder = 'blocks'
-    if not os.path.exists(blocks_folder):
-        os.makedirs(blocks_folder)
-    
-    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-    backup_file = f'blocks/blockchain_backup_{timestamp}.encrypted'
-    
+    """Create blockchain backup and save to database"""
+    user = AuthService.get_current_user()
+
     try:
-        blockchain.save_to_file(backup_file)
-        success = True
-    except Exception:
-        success = False
-    
-    if success:
-        flash(f'✅ Blockchain backup created: {backup_file}', 'success')
-    else:
-        flash('❌ Backup failed. Check server logs.', 'danger')
-    
+        # Get encrypted blockchain data
+        encrypted_data = blockchain.get_encrypted_data()
+
+        # Create backup record
+        timestamp = datetime.now()
+        display_name = f"Save - {timestamp.strftime('%d/%m/%Y %H:%M:%S')}"
+        filename = f"blockchain_backup_{timestamp.strftime('%Y%m%d_%H%M%S')}.encrypted"
+
+        backup = BlockchainBackup(
+            name=display_name,
+            filename=filename,
+            backup_data=encrypted_data,
+            created_by=user['id']
+        )
+
+        db.session.add(backup)
+        db.session.commit()
+
+        flash(f'✅ Blockchain backup saved to database: {display_name}', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'❌ Backup failed: {str(e)}', 'danger')
+
     return redirect(url_for('blockchain_admin'))
 
 
 @app.route('/admin/blockchain/restore', methods=['POST'])
 @admin_required
 def restore_blockchain():
-    """Restore blockchain from a backup file"""
+    """Restore blockchain from database backup"""
     global blockchain
-    
-    backup_filename = request.form.get('backup_file', '').strip()
-    
-    if not backup_filename:
-        flash('No backup file specified', 'danger')
+
+    backup_id_str = request.form.get('backup_file', '').strip()
+
+    if not backup_id_str:
+        flash('No backup specified', 'danger')
         return redirect(url_for('blockchain_admin'))
-    
-    # Ensure proper path format (list_backups already returns blocks/ prefix)
-    backup_filename = backup_filename.replace('\\', '/')
-    
-    if not backup_filename.endswith('.encrypted'):
-        flash('Invalid backup file format. Must be .encrypted file', 'danger')
-        return redirect(url_for('blockchain_admin'))
-    
-    # Prevent path traversal
-    if '..' in backup_filename:
-        flash('Invalid backup file path', 'danger')
-        return redirect(url_for('blockchain_admin'))
-    
-    if not os.path.exists(backup_filename):
-        flash(f'Backup file not found: {backup_filename}', 'danger')
-        return redirect(url_for('blockchain_admin'))
-    
+
     try:
-        # Backup current encrypted file before restoring
-        if os.path.exists(blockchain.STORAGE_FILE):
-            pre_restore_backup = f'blocks/blockchain_pre_restore_{datetime.now().strftime("%Y%m%d_%H%M%S")}.encrypted'
-            shutil.copy(blockchain.STORAGE_FILE, pre_restore_backup)
-            flash(f'Current blockchain backed up to: {pre_restore_backup}', 'info')
-        
-        # Copy the backup file to the expected storage file name
-        shutil.copy(backup_filename, blockchain.STORAGE_FILE)
-        
-        # Reload the blockchain
-        blockchain = PropertyBlockchain(verbose=True)
-        
-        if blockchain.is_chain_valid():
-            flash(f'✅ Blockchain restored from {backup_filename}! Loaded {len(blockchain.chain)} blocks.', 'success')
+        backup_id = int(backup_id_str.replace('db_backup_', ''))
+    except ValueError:
+        flash('Invalid backup ID', 'danger')
+        return redirect(url_for('blockchain_admin'))
+
+    # Get the backup from database
+    backup = BlockchainBackup.query.get(backup_id)
+    if not backup:
+        flash('Backup not found', 'danger')
+        return redirect(url_for('blockchain_admin'))
+
+    try:
+        # Backup current blockchain before restoring
+        current_data = blockchain.get_encrypted_data()
+        pre_restore_backup = BlockchainBackup(
+            name=f"Pre-restore backup - {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}",
+            filename="auto_backup_pre_restore.encrypted",
+            backup_data=current_data,
+            created_by=AuthService.get_current_user()['id']
+        )
+        db.session.add(pre_restore_backup)
+        db.session.commit()
+        flash(f'Current blockchain backed up to database as: {pre_restore_backup.name}', 'info')
+
+        # Create new blockchain instance and load from backup data
+        new_blockchain = PropertyBlockchain(verbose=True)
+        success = new_blockchain.load_from_encrypted_data(backup.backup_data)
+
+        if success:
+            blockchain = new_blockchain
+            # Save to local storage for persistence
+            blockchain._save_blockchain()
+            flash(f'✅ Blockchain restored from database backup "{backup.name}"! Loaded {len(blockchain.chain)} blocks.', 'success')
         else:
-            flash('⚠️ Blockchain restored but validation failed!', 'warning')
-            
+            # Try recovery as fallback
+            recovery_success, recovery_message = new_blockchain.attempt_recovery_from_encrypted_data(backup.backup_data)
+
+            if recovery_success:
+                blockchain = new_blockchain
+                # Save to local storage for persistence
+                blockchain._save_blockchain()
+                flash(f'⚠️ Partial recovery successful: {recovery_message}', 'warning')
+                flash(f'Restored {len(blockchain.chain)} blocks from backup "{backup.name}"', 'info')
+            else:
+                # Provide detailed error information
+                error_details = []
+                if hasattr(new_blockchain, 'logs') and new_blockchain.logs:
+                    # Show last 5 error logs
+                    error_logs = [log for log in new_blockchain.logs[-10:] if 'error' in log.lower() or 'failed' in log.lower() or 'invalid' in log.lower()]
+                    if error_logs:
+                        error_details = error_logs[-5:]  # Last 5 relevant logs
+
+                error_msg = '❌ Blockchain restore failed! Backup data is corrupted.'
+                if error_details:
+                    error_msg += ' Details: ' + ' | '.join(error_details)
+                else:
+                    error_msg += ' The backup data appears to be corrupted or incompatible.'
+
+                flash(error_msg, 'danger')
+
     except Exception as e:
+        db.session.rollback()
         flash(f'❌ Restore failed: {str(e)}', 'danger')
-    
+
     return redirect(url_for('blockchain_admin'))
 
 
 @app.route('/admin/blockchain/list-backups')
 @admin_required
 def list_backups():
-    """Get list of available backup files as JSON with friendly names"""
-    import re
-    backups = glob.glob('blocks/blockchain_backup_*.encrypted')
-    backups.sort(reverse=True)  # Most recent first
-    
-    # Create friendly display names
+    """Get list of available database backups as JSON with friendly names"""
+    backups = BlockchainBackup.query.order_by(BlockchainBackup.created_at.desc()).all()
+
     backup_list = []
-    for i, filepath in enumerate(backups, 1):
-        # Extract timestamp from filename: blockchain_backup_20260107_215403.encrypted
-        match = re.search(r'blockchain_backup_(\d{4})(\d{2})(\d{2})_(\d{2})(\d{2})(\d{2})', filepath)
-        if match:
-            year, month, day, hour, minute, second = match.groups()
-            display_name = f"Save {i} - {day}/{month}/{year} {hour}:{minute}:{second}"
-        else:
-            display_name = f"Save {i}"
-        
+    for i, backup in enumerate(backups, 1):
         backup_list.append({
-            'path': filepath.replace('\\', '/'),
-            'name': display_name
+            'id': backup.id,
+            'path': f"db_backup_{backup.id}",  # Use ID for restore
+            'name': backup.name
         })
-    
+
     return jsonify({'backups': backup_list})
 
 

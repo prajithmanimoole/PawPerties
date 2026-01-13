@@ -124,6 +124,25 @@ class Message(db.Model):
         return f'<Message {self.id}>'
 
 
+class BlockchainBackup(db.Model):
+    """
+    Model to store blockchain backup data in database
+    """
+    __tablename__ = 'blockchain_backups'
+
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(255), nullable=False)  # Friendly display name
+    filename = db.Column(db.String(255), nullable=False)  # Original filename for reference
+    backup_data = db.Column(db.Text, nullable=False)  # Encrypted blockchain data
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)  # User who created the backup
+
+    creator = db.relationship('User', backref='blockchain_backups')
+
+    def __repr__(self):
+        return f'<BlockchainBackup {self.name} - {self.created_at}>'
+
+
 def init_db(app):
     """Initialize database with default users"""
     db.init_app(app)

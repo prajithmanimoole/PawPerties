@@ -138,6 +138,14 @@
     <div class="alert alert-danger">
         <strong>❌ {{ validation_message }}</strong><br>
         Blockchain integrity compromised! Immediate investigation required.
+        {% if validation_logs %}
+        <br><br><strong>Validation Details:</strong>
+        <ul style="margin-top: 10px;">
+            {% for log in validation_logs %}
+            <li style="font-family: monospace; font-size: 0.9em;">{{ log }}</li>
+            {% endfor %}
+        </ul>
+        {% endif %}
     </div>
     {% endif %}
     
@@ -269,7 +277,7 @@
     
     <div class="alert alert-info" style="margin-top: 1.5rem;">
         <strong>ℹ️ Backup Options:</strong><br>
-        • <strong>Local Backup:</strong> Saves timestamped .encrypted file in the <code>blocks/</code> folder.<br>
+        • <strong>Local Backup:</strong> Saves encrypted blockchain data directly to database with timestamp.<br>
         • <strong>IPFS Backup:</strong> Uploads to Pinata/IPFS decentralized storage. Save the CID to restore later!<br>
         • <strong>Restore:</strong> Always creates a safety backup before overwriting current blockchain.
     </div>

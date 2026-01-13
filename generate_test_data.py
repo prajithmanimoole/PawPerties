@@ -73,8 +73,14 @@ def generate_pan():
 
 
 def generate_survey_number():
-    """Generate a unique survey number"""
-    return f"SRV/{random.randint(100, 999)}/{random.randint(2020, 2025)}/{random.randint(1000, 9999)}"
+    """Generate a survey number in Indian format"""
+    formats = [
+        lambda: str(random.randint(100000, 999999)),  # Whole parcel: e.g., 150789
+        lambda: f"{random.randint(10, 999)}/{random.randint(1, 99)}",  # Subdivided: e.g., 24/1, 42/2
+        lambda: f"{random.randint(10, 999)}/{random.choice('ABCDEFGHIJKLMNOPQRSTUVWXYZ')}",  # Subdivided: e.g., 10/A
+        lambda: f"Khasra No {random.randint(100, 999)}",  # Khasra: e.g., Khasra No 105
+    ]
+    return random.choice(formats)()
 
 
 def generate_property_key():

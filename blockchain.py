@@ -15,6 +15,7 @@ import subprocess
 import uuid
 import logging
 import requests
+import copy
 from datetime import datetime
 from typing import Optional, List, Dict, Any
 from dotenv import load_dotenv
@@ -41,22 +42,22 @@ class Block:
         self.hash = self.calculate_hash()
     
     def calculate_hash(self) -> str:
-        """Calculate SHA-256 hash of the block."""
+        """Calculate SHA-256 hash of the block with deterministic JSON serialization."""
         block_string = json.dumps({
             "index": self.index,
             "timestamp": self.timestamp,
             "data": self.data,
             "previous_hash": self.previous_hash,
             "property_key": self.property_key
-        }, sort_keys=True)
-        return hashlib.sha256(block_string.encode()).hexdigest()
+        }, sort_keys=True, separators=(',', ':'), ensure_ascii=True)
+        return hashlib.sha256(block_string.encode('utf-8')).hexdigest()
     
     def to_dict(self) -> Dict[str, Any]:
-        """Convert block to dictionary representation."""
+        """Convert block to dictionary representation with deep copy to prevent mutation."""
         return {
             "index": self.index,
             "timestamp": self.timestamp,
-            "data": self.data,
+            "data": copy.deepcopy(self.data),
             "previous_hash": self.previous_hash,
             "property_key": self.property_key,
             "hash": self.hash
@@ -73,18 +74,19 @@ class PropertyBlockchain:
     PINATA_API_KEY = os.environ.get('PINATA_API_KEY')
     PINATA_SECRET_KEY = os.environ.get('PINATA_SECRET_KEY')
     
-    def __init__(self, verbose: bool = False):
+    def __init__(self, verbose: bool = False, auto_restore: bool = False):
         """
         Initialize PropertyBlockchain.
-        
+
         Args:
             verbose: Enable console logging (default: False for production)
+            auto_restore: Enable automatic restore from database backup if no local blockchain exists
         """
         self.verbose = verbose
         self.chain: List[Block] = []
         self.property_index: Dict[str, List[int]] = {}  # Maps property_key to block indices
         self.logs: List[str] = []  # Store recent log messages for debugging
-        
+
         # Identity registry to ensure Aadhar and PAN uniqueness
         # Format: {"owner_name": {"aadhar": "123456789012", "pan": "ABCDE1234F", "customer_key": "CUST-XXXX"}}
         self.identity_registry: Dict[str, Dict[str, str]] = {}
@@ -93,10 +95,12 @@ class PropertyBlockchain:
         self.pan_to_owner: Dict[str, str] = {}  # Maps pan -> owner_name
         self.customer_key_to_owner: Dict[str, str] = {}  # Maps customer_key -> owner_name
         self.survey_to_property: Dict[str, str] = {}  # Maps survey_no -> property_key (ensures uniqueness)
-        
+
         # Try to load existing blockchain from encrypted file
         if self._load_blockchain():
             self._log("Loaded existing blockchain from encrypted storage")
+        elif auto_restore and self._auto_restore_from_backup():
+            self._log("Auto-restored blockchain from database backup")
         else:
             # Create genesis block only if no existing blockchain was loaded
             self._create_genesis_block()
@@ -888,20 +892,38 @@ class PropertyBlockchain:
     
     def is_chain_valid(self) -> bool:
         """Verify the integrity of the blockchain."""
+        if not self.chain:
+            self._log("Blockchain is empty", "error")
+            return False
+
+        if len(self.chain) == 1:
+            # Only genesis block
+            genesis = self.chain[0]
+            if genesis.hash != genesis.calculate_hash():
+                self._log("Genesis block hash is invalid", "error")
+                return False
+            self._log("Blockchain is valid (genesis only)")
+            return True
+
         for i in range(1, len(self.chain)):
             current_block = self.chain[i]
             previous_block = self.chain[i - 1]
-            
+
             # Check if current hash is correct
-            if current_block.hash != current_block.calculate_hash():
-                self._log(f"Invalid hash at block {i}", "error")
+            calculated_hash = current_block.calculate_hash()
+            if current_block.hash != calculated_hash:
+                self._log(f"Invalid hash at block {i} ({current_block.property_key})", "error")
+                self._log(f"  Stored: {current_block.hash}", "error")
+                self._log(f"  Calculated: {calculated_hash}", "error")
                 return False
-            
+
             # Check if previous hash reference is correct
             if current_block.previous_hash != previous_block.hash:
-                self._log(f"Invalid chain link at block {i}", "error")
+                self._log(f"Invalid chain link at block {i} ({current_block.property_key})", "error")
+                self._log(f"  Block {i} previous_hash: {current_block.previous_hash}", "error")
+                self._log(f"  Block {i-1} hash: {previous_block.hash}", "error")
                 return False
-        
+
         self._log("Blockchain is valid")
         return True
     
@@ -913,6 +935,20 @@ class PropertyBlockchain:
         if self.is_chain_valid():
             return True, "Blockchain is valid"
         return False, "Blockchain validation failed"
+
+    def validate_with_details(self) -> tuple[bool, str, List[str]]:
+        """
+        Validate blockchain integrity with detailed error information.
+        Returns tuple of (is_valid, summary_message, detailed_logs).
+        """
+        # Clear previous logs
+        self.logs = []
+
+        is_valid = self.is_chain_valid()
+        summary = "Blockchain is valid" if is_valid else "Blockchain validation failed"
+
+        # Return validation result, summary, and recent logs
+        return is_valid, summary, self.logs[-10:]  # Last 10 log messages
     
     def get_all_properties(self) -> List[Dict[str, Any]]:
         """Get current state of all registered properties."""
@@ -1072,23 +1108,34 @@ class PropertyBlockchain:
                     previous_hash=block_dict["previous_hash"],
                     property_key=block_dict["property_key"]
                 )
-                # Restore the original hash
+                # Restore the original hash from storage (don't recalculate)
+                # With deterministic JSON serialization, this should match calculate_hash()
                 block.hash = block_dict["hash"]
                 self.chain.append(block)
             
             # Restore property index
             self.property_index = blockchain_data["property_index"]
-            
+
             # Restore identity registry
             self.identity_registry = blockchain_data.get("identity_registry", {})
             self.aadhar_to_owner = blockchain_data.get("aadhar_to_owner", {})
             self.pan_to_owner = blockchain_data.get("pan_to_owner", {})
             self.customer_key_to_owner = blockchain_data.get("customer_key_to_owner", {})
             self.survey_to_property = blockchain_data.get("survey_to_property", {})
-            
+
             # Validate the loaded blockchain
             if self.is_chain_valid():
-                return True
+                # Additional validation: check that property_index references valid block indices
+                try:
+                    for property_key, indices in self.property_index.items():
+                        for idx in indices:
+                            if idx >= len(self.chain):
+                                self._log(f"Property {property_key} references invalid block index {idx} (chain has {len(self.chain)} blocks)", "error")
+                                return False
+                    return True
+                except Exception as e:
+                    self._log(f"Error validating property_index: {e}", "error")
+                    return False
             else:
                 self._log("Warning: Loaded blockchain failed validation", "error")
                 return False
@@ -1098,6 +1145,210 @@ class PropertyBlockchain:
             # Don't delete the file - it might be needed for debugging
             return False
     
+    def get_encrypted_data(self) -> str:
+        """Get the encrypted blockchain data as a string for database storage."""
+        # Prepare blockchain data
+        blockchain_data = {
+            "chain": [block.to_dict() for block in self.chain],
+            "property_index": self.property_index,
+            "identity_registry": self.identity_registry,
+            "aadhar_to_owner": self.aadhar_to_owner,
+            "pan_to_owner": self.pan_to_owner,
+            "customer_key_to_owner": self.customer_key_to_owner,
+            "survey_to_property": self.survey_to_property,
+            "saved_at": datetime.now().isoformat()
+        }
+
+        # Convert to JSON string
+        json_data = json.dumps(blockchain_data, indent=2)
+
+        # Encrypt the data
+        encrypted_data = self._encrypt_data(json_data)
+        return encrypted_data
+
+    def load_from_encrypted_data(self, encrypted_data: str) -> bool:
+        """Load blockchain from encrypted data string (for database restore)."""
+        try:
+            # Decrypt the data
+            json_data = self._decrypt_data(encrypted_data)
+
+            # Parse JSON
+            blockchain_data = json.loads(json_data)
+
+            # Reconstruct blockchain
+            self.chain = []
+            for block_dict in blockchain_data["chain"]:
+                block = Block(
+                    index=block_dict["index"],
+                    timestamp=block_dict["timestamp"],
+                    data=block_dict["data"],
+                    previous_hash=block_dict["previous_hash"],
+                    property_key=block_dict["property_key"]
+                )
+                # Restore the original hash
+                block.hash = block_dict["hash"]
+                self.chain.append(block)
+
+            # Restore property index
+            self.property_index = blockchain_data["property_index"]
+
+            # Restore identity registry
+            self.identity_registry = blockchain_data.get("identity_registry", {})
+            self.aadhar_to_owner = blockchain_data.get("aadhar_to_owner", {})
+            self.pan_to_owner = blockchain_data.get("pan_to_owner", {})
+            self.customer_key_to_owner = blockchain_data.get("customer_key_to_owner", {})
+            self.survey_to_property = blockchain_data.get("survey_to_property", {})
+
+            # Validate the loaded blockchain
+            if self.is_chain_valid():
+                return True
+            else:
+                self._log("Warning: Loaded blockchain failed validation", "error")
+                return False
+
+        except Exception as e:
+            self._log(f"Error loading blockchain from encrypted data: {e}", "error")
+            return False
+
+    def attempt_recovery_from_encrypted_data(self, encrypted_data: str) -> tuple[bool, str]:
+        """
+        Attempt to recover as much valid data as possible from corrupted backup.
+        Returns (success, message) where success indicates if any data was recovered.
+        """
+        try:
+            # Decrypt the data
+            json_data = self._decrypt_data(encrypted_data)
+
+            # Parse JSON
+            blockchain_data = json.loads(json_data)
+
+            # Try to load blocks one by one, stopping at first invalid block
+            valid_blocks = []
+            for i, block_dict in enumerate(blockchain_data["chain"]):
+                try:
+                    block = Block(
+                        index=block_dict["index"],
+                        timestamp=block_dict["timestamp"],
+                        data=block_dict["data"],
+                        previous_hash=block_dict["previous_hash"],
+                        property_key=block_dict["property_key"]
+                    )
+                    # Restore the original hash
+                    block.hash = block_dict["hash"]
+
+                    # Check if this block is valid by itself
+                    if block.hash == block.calculate_hash():
+                        valid_blocks.append((block, block_dict))
+                    else:
+                        self._log(f"Block {i} has invalid hash, stopping recovery", "error")
+                        break
+                except Exception as e:
+                    self._log(f"Error reconstructing block {i}: {e}", "error")
+                    break
+
+            if not valid_blocks:
+                return False, "No valid blocks found in backup"
+
+            # Reconstruct with valid blocks
+            self.chain = [block for block, _ in valid_blocks]
+
+            # Rebuild metadata based on recovered blocks
+            try:
+                # Get original metadata
+                original_property_index = blockchain_data.get("property_index", {})
+                original_identity_registry = blockchain_data.get("identity_registry", {})
+                original_aadhar_to_owner = blockchain_data.get("aadhar_to_owner", {})
+                original_pan_to_owner = blockchain_data.get("pan_to_owner", {})
+                original_customer_key_to_owner = blockchain_data.get("customer_key_to_owner", {})
+                original_survey_to_property = blockchain_data.get("survey_to_property", {})
+
+                # Rebuild property_index for recovered blocks
+                self.property_index = {}
+                property_keys_seen = set()
+
+                for new_index, (block, original_dict) in enumerate(valid_blocks):
+                    property_key = block.property_key
+                    if property_key not in property_keys_seen:
+                        # This is the first block for this property in our recovered chain
+                        self.property_index[property_key] = [new_index]
+                        property_keys_seen.add(property_key)
+                    else:
+                        # Add to existing property's indices
+                        if property_key in self.property_index:
+                            self.property_index[property_key].append(new_index)
+
+                # Restore identity and survey mappings (these should be valid)
+                self.identity_registry = original_identity_registry
+                self.aadhar_to_owner = original_aadhar_to_owner
+                self.pan_to_owner = original_pan_to_owner
+                self.customer_key_to_owner = original_customer_key_to_owner
+                self.survey_to_property = original_survey_to_property
+
+                self._log(f"Rebuilt property_index with {len(self.property_index)} properties", "info")
+
+            except Exception as e:
+                self._log(f"Error rebuilding metadata: {e}", "error")
+                # Initialize empty metadata as fallback
+                self.property_index = {}
+                self.identity_registry = {}
+                self.aadhar_to_owner = {}
+                self.pan_to_owner = {}
+                self.customer_key_to_owner = {}
+                self.survey_to_property = {}
+
+            # Validate what we have
+            if self.is_chain_valid():
+                return True, f"Successfully recovered {len(self.chain)} valid blocks"
+            else:
+                return True, f"Recovered {len(self.chain)} blocks but chain validation failed - data may be incomplete"
+
+        except Exception as e:
+            self._log(f"Recovery failed: {e}", "error")
+        return False, f"Recovery failed: {str(e)}"
+
+    def _auto_restore_from_backup(self) -> bool:
+        """
+        Automatically restore blockchain from the most recent database backup.
+        This is called during initialization if no local blockchain file exists.
+
+        Returns:
+            bool: True if restoration was successful
+        """
+        try:
+            # Import database models here to avoid circular imports
+            from models import BlockchainBackup, db
+
+            # Get the most recent backup from database
+            latest_backup = BlockchainBackup.query.order_by(BlockchainBackup.created_at.desc()).first()
+
+            if not latest_backup:
+                self._log("No database backups found for auto-restore", "error")
+                return False
+
+            self._log(f"Found latest backup: {latest_backup.name} (created {latest_backup.created_at})")
+
+            # Try to load from backup data
+            success = self.load_from_encrypted_data(latest_backup.backup_data)
+
+            if success:
+                self._log(f"✅ Auto-restored blockchain from database backup: {latest_backup.name}")
+                self._log(f"   Loaded {len(self.chain)} blocks")
+
+                # Save to local storage so it's persistent for future startups
+                if self._save_blockchain():
+                    self._log("   Blockchain saved to local storage for future use")
+                else:
+                    self._log("   Warning: Failed to save to local storage", "error")
+
+                return True
+            else:
+                self._log(f"Failed to load from backup: {latest_backup.name}", "error")
+                return False
+
+        except Exception as e:
+            self._log(f"Auto-restore failed: {str(e)}", "error")
+            return False
+
     def save_and_exit(self) -> None:
         """Save blockchain to encrypted storage before exiting."""
         self._save_blockchain()
