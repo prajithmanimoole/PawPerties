@@ -69,6 +69,7 @@ class PropertyBlockchain:
     
     STORAGE_FOLDER = "blocks"
     STORAGE_FILE = "blocks/blockchain_data.encrypted"
+    PINATA_CID_FILE = "pinata_cid.txt"  # CID file in project root for auto-restore
 
     # IPFS Configuration (Pinata) - Load from environment variables
     PINATA_API_KEY = os.environ.get('PINATA_API_KEY')
@@ -96,9 +97,13 @@ class PropertyBlockchain:
         self.customer_key_to_owner: Dict[str, str] = {}  # Maps customer_key -> owner_name
         self.survey_to_property: Dict[str, str] = {}  # Maps survey_no -> property_key (ensures uniqueness)
 
-        # Try to load existing blockchain from encrypted file
-        if self._load_blockchain():
+        # Priority 1: Try to restore from Pinata IPFS CID if available
+        if self._auto_restore_from_ipfs():
+            self._log("Successfully auto-restored blockchain from Pinata IPFS")
+        # Priority 2: Try to load existing blockchain from encrypted file
+        elif self._load_blockchain():
             self._log("Loaded existing blockchain from encrypted storage")
+        # Priority 3: Try to restore from database backup if auto_restore enabled
         elif auto_restore and self._auto_restore_from_backup():
             self._log("Auto-restored blockchain from database backup")
         else:
@@ -1306,6 +1311,47 @@ class PropertyBlockchain:
             self._log(f"Recovery failed: {e}", "error")
         return False, f"Recovery failed: {str(e)}"
 
+    def _auto_restore_from_ipfs(self) -> bool:
+        """
+        Automatically restore blockchain from Pinata IPFS using CID from pinata_cid.txt.
+        This is called first during initialization for seamless cloud restoration.
+
+        Returns:
+            bool: True if restoration was successful
+        """
+        try:
+            # Check if CID file exists in project root
+            if not os.path.exists(self.PINATA_CID_FILE):
+                self._log(f"No {self.PINATA_CID_FILE} found in project root - skipping IPFS auto-restore")
+                return False
+
+            # Read CID from file
+            with open(self.PINATA_CID_FILE, 'r') as f:
+                cid = f.read().strip()
+
+            if not cid:
+                self._log(f"{self.PINATA_CID_FILE} is empty - skipping IPFS auto-restore", "error")
+                return False
+
+            self._log(f"Found Pinata CID in {self.PINATA_CID_FILE}: {cid}")
+            self._log("Attempting to restore blockchain from Pinata IPFS...")
+
+            # Attempt IPFS restoration
+            success = self.restore_from_ipfs(cid)
+
+            if success:
+                self._log(f"✅ Successfully auto-restored blockchain from Pinata IPFS (CID: {cid})")
+                return True
+            else:
+                self._log(f"❌ Failed to restore from Pinata IPFS (CID: {cid})", "error")
+                self._log("Will fall back to other restoration methods...", "error")
+                return False
+
+        except Exception as e:
+            self._log(f"IPFS auto-restore error: {str(e)}", "error")
+            self._log("Will fall back to other restoration methods...", "error")
+            return False
+
     def _auto_restore_from_backup(self) -> bool:
         """
         Automatically restore blockchain from the most recent database backup.
@@ -1444,6 +1490,15 @@ class PropertyBlockchain:
                 self._log(f"✅ Blockchain backed up to IPFS!")
                 self._log(f"   CID: {cid}")
                 self._log(f"   View at: https://gateway.pinata.cloud/ipfs/{cid}")
+                
+                # Automatically save CID to file for auto-restore on next startup
+                try:
+                    with open(self.PINATA_CID_FILE, 'w') as f:
+                        f.write(cid)
+                    self._log(f"✅ Saved CID to {self.PINATA_CID_FILE} for automatic restoration on next startup")
+                except Exception as e:
+                    self._log(f"Warning: Could not save CID to file: {e}", "error")
+                
                 return cid
             else:
                 self._log(f"IPFS backup failed with status {response.status_code}", "error")

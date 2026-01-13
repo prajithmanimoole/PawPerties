@@ -23,6 +23,7 @@ blockchain_data.encrypted
 backups/
 blocks/
 revenue_data.json
+pinata_cid.txt
 
 # IDE settings
 .vscode/
