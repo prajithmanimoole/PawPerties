@@ -261,32 +261,6 @@ Check Proof of Work → Return Validation Status
 5. **Backup Regularly**: No built-in disaster recovery
 6. **SQLite Limitations**: Not for high-concurrency production use
 
-## 🔧 Troubleshooting
-
-### Blockchain Won't Load
-- Check if `blockchain_data.pkl` exists
-- If corrupted, delete and restart (loses all data!)
-
-### Can't Login
-- Verify database exists: `database.db`
-- Check default user creation in console output
-
-### Session Expires Too Fast
-- Adjust `PERMANENT_SESSION_LIFETIME` in config.py
-
-### Performance Issues
-- Consider increasing blockchain difficulty for slower mining
-- Or decrease for faster blocks
-
-## 📞 Support
-
-This is a production-ready internal application. For enterprise deployment:
-- Review security configurations
-- Implement monitoring and logging
-- Consider database scaling (PostgreSQL for production)
-- Add audit trails
-- Implement user management UI
-
 ## 📄 License
 
 Internal Use Only - Property Registration System
@@ -297,8 +271,6 @@ Internal Use Only - Property Registration System
 
 ## 🔗 Sharing Blockchain Data
 
-By default, blockchain data files (in the `blocks/` folder, e.g., `blockchain_data.encrypted`) are **not uploaded to Git** for security and privacy reasons. If you want to share the blockchain data with others (for backup, migration, or collaboration), use one of these methods:
-
 ### 1. Manual File Sharing
 - Send the files from your `blocks/` folder (such as `blockchain_data.encrypted`) to your collaborators using email, Google Drive, Dropbox, or any file-sharing service.
 - The recipient should place these files in their own `blocks/` folder inside the project directory.
@@ -307,10 +279,6 @@ By default, blockchain data files (in the `blocks/` folder, e.g., `blockchain_da
 - Use the built-in admin feature to back up the blockchain to IPFS (Pinata).
 - Share the IPFS CID (Content Identifier) with your collaborators.
 - They can restore the blockchain by using the CID to download the file from IPFS and placing it in their `blocks/` folder, or by using the admin restore feature in the app.
-
-**Note:**
-- Never share blockchain data files publicly unless you intend for the data to be public.
-- Always verify the integrity of the blockchain after restoring or sharing data.
 
 **Example Workflow:**
 1. Admin creates a backup (file or IPFS) from the app.
