@@ -384,6 +384,42 @@ class CIDManager:
             pass
         return []
 
+    def unpin_cid(self, cid: str) -> bool:
+        """
+        Unpin a CID from Pinata to free up storage space.
+        
+        Args:
+            cid: The IPFS CID to unpin
+            
+        Returns:
+            bool: True if unpinned successfully or already removed
+        """
+        if not (self.pinata_api_key and self.pinata_secret_key):
+            return False
+            
+        try:
+            url = f"https://api.pinata.cloud/pinning/unpin/{cid}"
+            headers = {
+                "pinata_api_key": self.pinata_api_key,
+                "pinata_secret_api_key": self.pinata_secret_key
+            }
+            
+            response = requests.delete(url, headers=headers)
+            
+            if response.status_code == 200:
+                print(f"🗑️ Unpinned old CID: {cid}")
+                return True
+            elif response.status_code == 404:
+                print(f"ℹ️ Old CID not found (already unpinned): {cid}")
+                return True
+            else:
+                print(f"⚠️ Failed to unpin CID {cid}: {response.text}")
+                return False
+                
+        except Exception as e:
+            print(f"⚠️ Error unpinning CID: {e}")
+            return False
+
 
 # Singleton instance
 cid_manager = CIDManager()

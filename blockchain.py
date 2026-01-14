@@ -1701,9 +1701,17 @@ class PropertyBlockchain:
                     "file_size": file_size,
                     "timestamp": datetime.now().isoformat(),
                 }
+                
+                # Get the PREVIOUS CID before saving the new one
+                old_cid = cid_manager.get_latest_cid()
 
                 if cid_manager.save_cid(cid, metadata):
                     self._log(f"✅ Saved CID for automatic restoration on next startup")
+                    
+                    # Clean up old CID to save space (Pinata optimization)
+                    if old_cid and old_cid != cid:
+                        self._log(f"Cleaning up old backup: {old_cid}")
+                        cid_manager.unpin_cid(old_cid)
                 else:
                     self._log(f"Warning: Could not save CID via CID manager", "error")
 
