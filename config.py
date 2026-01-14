@@ -21,7 +21,7 @@ class Config:
     SESSION_COOKIE_SAMESITE = 'Lax'
     
     # Database configuration (for authentication only)
-    SQLALCHEMY_DATABASE_URI = 'sqlite:///database.db'
+    SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or 'sqlite:///database.db'
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     
     # Blockchain persistence file
