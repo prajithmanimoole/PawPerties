@@ -48,63 +48,6 @@ This application is designed for **authorized blockchain officers and administra
 - View complete blockchain
 - Create blockchain backups
 
-## 🚀 Installation & Setup
-
-### Prerequisites
-```bash
-Python 3.8 or higher
-pip (Python package manager)
-```
-
-### Install Dependencies
-```bash
-# IMPORTANT: Use the existing .venv folder (already in your project)
-# Activate the virtual environment
-.venv\Scripts\activate  # Windows
-# source .venv/bin/activate  # Linux/Mac
-
-# Install dependencies
-pip install -r requirements.txt
-```
-
-**Note:** A virtual environment (`.venv`) isolates your project's Python packages from your system Python. This project already has a `.venv` folder - just activate it!
-
-### Environment Variables Setup
-
-**IMPORTANT**: You must configure environment variables before running the application.
-
-1. Copy the example environment file:
-```bash
-copy .env.example .env  # Windows
-# cp .env.example .env  # Linux/Mac
-```
-
-2. Edit `.env` and add your actual API keys:
-```bash
-# Flask Secret Key (generate a strong random key for production)
-SECRET_KEY=your-secret-key-here-change-in-production
-
-# Gemini AI API Key (get from https://aistudio.google.com/app/apikey)
-GEMINI_API_KEY=your-gemini-api-key-here
-
-# Pinata IPFS API Keys (get from https://pinata.cloud/)
-PINATA_API_KEY=your-pinata-api-key-here
-PINATA_SECRET_KEY=your-pinata-secret-key-here
-```
-
-3. **How to get API Keys:**
-   - **Gemini API**: Visit [Google AI Studio](https://aistudio.google.com/app/apikey) and create an API key
-   - **Pinata API**: Sign up at [Pinata Cloud](https://pinata.cloud/) and get your API keys from the dashboard
-
-**⚠️ SECURITY WARNING**: Never commit your `.env` file to Git! It's already in `.gitignore`.
-
-### Run the Application
-```bash
-python app.py
-```
-
-The application will start on `http://127.0.0.1:5000`
-
 ## 🔐 Default Login Credentials
 
 **⚠️ CHANGE THESE IN PRODUCTION!**
@@ -140,7 +83,6 @@ The application will start on `http://127.0.0.1:5000`
   - Blockchain technology and security
   - User roles and permissions
   - Troubleshooting common issues
-- 5-second response delay with "Thinking..." indicator
 - Works offline with fallback responses when AI unavailable
 
 ### Blockchain Management (Admin Only)
@@ -310,109 +252,6 @@ Check Proof of Work → Return Validation Status
 }
 ```
 
-## 🛡️ Security Best Practices
-
-### For Production Deployment
-
-1. **Change Default Passwords**
-   ```python
-   # In models.py, update default user creation
-   admin.set_password('your-strong-password')
-   ```
-
-2. **Update Secret Key**
-   ```python
-   # In config.py
-   SECRET_KEY = os.environ.get('SECRET_KEY') or 'your-random-secret-key'
-   ```
-
-3. **Enable HTTPS**
-   ```python
-   # In config.py
-   SESSION_COOKIE_SECURE = True
-   ```
-
-4. **Configure Session Timeout**
-   ```python
-   # In config.py
-   PERMANENT_SESSION_LIFETIME = timedelta(hours=1)  # Adjust as needed
-   ```
-
-5. **Backup Strategy**
-   - Schedule regular blockchain backups
-   - Store backups securely off-site
-   - Test backup restoration periodically
-
-6. **Access Control**
-   - Limit network access to authorized IPs
-   - Use firewall rules
-   - Monitor login attempts
-
-## 🧪 Testing the System
-
-### 1. Login
-- Navigate to `http://127.0.0.1:5000`
-- Login with default credentials
-
-### 2. Add Property
-- Go to "Add Property"
-- Fill form: PROP-001, John Doe, 123 Main St, 2500, Residential
-- Submit → New block created
-
-### 3. View Property
-- Search for PROP-001
-- View current state and details
-
-### 4. Transfer Property
-- Go to "Transfer"
-- PROP-001 from John Doe to Jane Smith
-- Submit → New transfer block created
-
-### 5. View History
-- View PROP-001 history
-- See all transactions (add + transfer)
-
-### 6. Admin Functions (admin only)
-- Go to Blockchain Admin
-- Validate blockchain
-- View full blockchain
-- Create backup
-
-## 📈 Monitoring & Maintenance
-
-### Check Blockchain Integrity
-```
-Admin → Blockchain Admin → Run Validation
-```
-
-### View System Stats
-```
-Dashboard → Shows total blocks, properties, latest hash
-```
-
-### Create Backups
-```
-Admin → Blockchain Admin → Create Backup
-```
-
-### Add New Officers
-You need to manually add users to the database:
-```python
-from models import db, User
-from app import app
-
-with app.app_context():
-    new_officer = User(
-        username='officer2',
-        full_name='New Officer',
-        role='officer',
-        is_active=True
-    )
-    new_officer.set_password('password123')
-    db.session.add(new_officer)
-    db.session.commit()
-```
-
 ## ⚠️ Important Notes
 
 1. **Immutability**: Once a block is added, it cannot be modified or deleted
@@ -421,32 +260,6 @@ with app.app_context():
 4. **Unique Keys**: Property keys must be unique across the system
 5. **Backup Regularly**: No built-in disaster recovery
 6. **SQLite Limitations**: Not for high-concurrency production use
-
-## 🔧 Troubleshooting
-
-### Blockchain Won't Load
-- Check if `blockchain_data.pkl` exists
-- If corrupted, delete and restart (loses all data!)
-
-### Can't Login
-- Verify database exists: `database.db`
-- Check default user creation in console output
-
-### Session Expires Too Fast
-- Adjust `PERMANENT_SESSION_LIFETIME` in config.py
-
-### Performance Issues
-- Consider increasing blockchain difficulty for slower mining
-- Or decrease for faster blocks
-
-## 📞 Support
-
-This is a production-ready internal application. For enterprise deployment:
-- Review security configurations
-- Implement monitoring and logging
-- Consider database scaling (PostgreSQL for production)
-- Add audit trails
-- Implement user management UI
 
 ## 📄 License
 
@@ -458,8 +271,6 @@ Internal Use Only - Property Registration System
 
 ## 🔗 Sharing Blockchain Data
 
-By default, blockchain data files (in the `blocks/` folder, e.g., `blockchain_data.encrypted`) are **not uploaded to Git** for security and privacy reasons. If you want to share the blockchain data with others (for backup, migration, or collaboration), use one of these methods:
-
 ### 1. Manual File Sharing
 - Send the files from your `blocks/` folder (such as `blockchain_data.encrypted`) to your collaborators using email, Google Drive, Dropbox, or any file-sharing service.
 - The recipient should place these files in their own `blocks/` folder inside the project directory.
@@ -469,13 +280,7 @@ By default, blockchain data files (in the `blocks/` folder, e.g., `blockchain_da
 - Share the IPFS CID (Content Identifier) with your collaborators.
 - They can restore the blockchain by using the CID to download the file from IPFS and placing it in their `blocks/` folder, or by using the admin restore feature in the app.
 
-**Note:**
-- Never share blockchain data files publicly unless you intend for the data to be public.
-- Always verify the integrity of the blockchain after restoring or sharing data.
-
 **Example Workflow:**
 1. Admin creates a backup (file or IPFS) from the app.
 2. Shares the file or CID with another admin.
 3. The other admin restores the blockchain using the file or CID.
-
-See the [SECURITY_CHECKLIST.md](SECURITY_CHECKLIST.md) for more details on safe data handling.
