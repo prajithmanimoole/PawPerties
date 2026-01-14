@@ -21,7 +21,15 @@ class Config:
     SESSION_COOKIE_SAMESITE = 'Lax'
     
     # Database configuration (for authentication only)
-    SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or 'sqlite:///database.db'
+    DATABASE_URI = os.environ.get('DATABASE_URL') or 'sqlite:///database.db'
+    
+    # Fix for Render PostgreSQL SSL requirement
+    if DATABASE_URI and DATABASE_URI.startswith('postgresql://'):
+        # Render PostgreSQL requires SSL
+        if 'sslmode' not in DATABASE_URI:
+            DATABASE_URI = DATABASE_URI + ('&' if '?' in DATABASE_URI else '?') + 'sslmode=require'
+    
+    SQLALCHEMY_DATABASE_URI = DATABASE_URI
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     
     # Blockchain persistence file
