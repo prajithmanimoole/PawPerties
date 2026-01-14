@@ -284,5 +284,3 @@ Internal Use Only - Property Registration System
 1. Admin creates a backup (file or IPFS) from the app.
 2. Shares the file or CID with another admin.
 3. The other admin restores the blockchain using the file or CID.
-
-See the [SECURITY_CHECKLIST.md](SECURITY_CHECKLIST.md) for more details on safe data handling.
