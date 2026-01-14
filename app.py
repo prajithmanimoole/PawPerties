@@ -13,6 +13,7 @@ import copy
 import glob
 import os
 import shutil
+import signal
 import sys
 import warnings
 from datetime import datetime
@@ -215,6 +216,17 @@ def cleanup_old_backups():
 
 # Register auto-backup function to run on shutdown
 atexit.register(auto_backup_on_shutdown)
+
+# Register signal handlers for graceful shutdown (SIGTERM from Render pause/stop)
+def signal_handler(signum, frame):
+    """Handle shutdown signals (SIGTERM, SIGINT) from Render or user"""
+    print(f"\n⚠️ Received shutdown signal ({signum})")
+    auto_backup_on_shutdown()
+    sys.exit(0)
+
+# Register signal handlers for different shutdown scenarios
+signal.signal(signal.SIGTERM, signal_handler)  # Render pause/stop sends SIGTERM
+signal.signal(signal.SIGINT, signal_handler)   # Ctrl+C sends SIGINT
 
 
 # ============================================================================
