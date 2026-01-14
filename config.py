@@ -24,13 +24,19 @@ class Config:
     DATABASE_URI = os.environ.get('DATABASE_URL') or 'sqlite:///database.db'
     
     # Fix for Render PostgreSQL SSL requirement
-    if DATABASE_URI and DATABASE_URI.startswith('postgresql://'):
+    if DATABASE_URI and ('postgresql://' in DATABASE_URI or 'postgres://' in DATABASE_URI):
         # Render PostgreSQL requires SSL
         if 'sslmode' not in DATABASE_URI:
             DATABASE_URI = DATABASE_URI + ('&' if '?' in DATABASE_URI else '?') + 'sslmode=require'
     
     SQLALCHEMY_DATABASE_URI = DATABASE_URI
     SQLALCHEMY_TRACK_MODIFICATIONS = False
+    
+    # SQLAlchemy engine options for PostgreSQL SSL
+    SQLALCHEMY_ENGINE_OPTIONS = {
+        'pool_pre_ping': True,  # Verify connections before using
+        'pool_recycle': 300,    # Recycle connections after 5 minutes
+    }
     
     # Blockchain persistence file
     BLOCKCHAIN_FILE = 'blockchain_data.pkl'
