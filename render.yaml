@@ -6,7 +6,7 @@ services:
     plan: free
     runtime: python
     buildCommand: pip install -r requirements.txt
-    startCommand: gunicorn app:app --bind 0.0.0.0:$PORT
+    startCommand: python scripts/render_startup.py && gunicorn app:app --bind 0.0.0.0:$PORT
     healthCheckPath: /
     envVars:
       - key: SECRET_KEY
