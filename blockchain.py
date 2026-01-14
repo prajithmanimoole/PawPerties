@@ -1586,6 +1586,12 @@ class PropertyBlockchain:
     def save_and_exit(self) -> None:
         """Save blockchain to encrypted storage before exiting."""
         self._save_blockchain()
+        
+        # Automatically backup to IPFS after saving to disk
+        # This ensures persistence even if the server crashes or shutdown hook fails
+        if self.PINATA_API_KEY and self.PINATA_SECRET_KEY:
+            self._log("Triggering immediate IPFS backup...")
+            self.backup_to_ipfs()
 
     def save_to_file(self, filename: str = None):
         """
