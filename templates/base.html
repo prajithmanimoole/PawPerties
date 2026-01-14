@@ -12,9 +12,9 @@
         <nav class="navbar">
         <div class="navbar-container">
             {% if current_user.role == 'user' %}
-                <a href="{{ url_for('user_dashboard') }}" class="navbar-brand">🏢 Pawperties </a>
+                <a href="{{ url_for('user_dashboard') }}" class="navbar-brand">🏢 PawPerties </a>
             {% else %}
-                <a href="{{ url_for('dashboard') }}" class="navbar-brand">🏢 Pawperties </a>
+                <a href="{{ url_for('dashboard') }}" class="navbar-brand">🏢 PawPerties </a>
             {% endif %}
 
             <div class="navbar-menu">
