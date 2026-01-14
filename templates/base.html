@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}Property Blockchain System{% endblock %}</title>
+    <title>{% block title %}Pawperties{% endblock %}</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     {% block styles %}{% endblock %}
 </head>
@@ -12,9 +12,9 @@
         <nav class="navbar">
         <div class="navbar-container">
             {% if current_user.role == 'user' %}
-                <a href="{{ url_for('user_dashboard') }}" class="navbar-brand">🏢 Property Blockchain</a>
+                <a href="{{ url_for('user_dashboard') }}" class="navbar-brand">🏢 Pawperties </a>
             {% else %}
-                <a href="{{ url_for('dashboard') }}" class="navbar-brand">🏢 Property Blockchain</a>
+                <a href="{{ url_for('dashboard') }}" class="navbar-brand">🏢 Pawperties </a>
             {% endif %}
 
             <div class="navbar-menu">
