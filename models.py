@@ -109,7 +109,7 @@ class Appointment(db.Model):
     preferred_time = db.Column(db.Time, nullable=False)
     status = db.Column(
         db.String(20), nullable=False, default="pending"
-    )  # 'pending', 'confirmed', 'completed', 'cancelled'
+    )  # 'pending', 'confirmed', 'completed', 'cancelled', 'rejected', 'closed' (auto-set when date passes)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     notes = db.Column(db.Text, nullable=True)
 

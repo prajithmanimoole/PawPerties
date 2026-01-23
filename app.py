@@ -383,8 +383,40 @@ def logout():
 @officer_or_admin_required
 def manage_appointments():
     """Display all appointments for officers and admins."""
-    appointments = Appointment.query.order_by(Appointment.created_at.desc()).all()
-    return render_template("manage_appointments.html", appointments=appointments)
+    # Auto-close expired appointments
+    from datetime import datetime, date, time
+    
+    # Get current datetime
+    current_datetime = datetime.now()
+    current_date = current_datetime.date()
+    current_time = current_datetime.time()
+    
+    # Find all confirmed appointments that have passed their scheduled date/time
+    confirmed_appointments = Appointment.query.filter_by(status="confirmed").all()
+    
+    for appt in confirmed_appointments:
+        # Combine preferred_date and preferred_time for comparison
+        appointment_datetime = datetime.combine(appt.preferred_date, appt.preferred_time)
+        
+        # If appointment datetime has passed, mark as closed
+        if appointment_datetime < current_datetime:
+            appt.status = "closed"
+    
+    # Commit any status changes
+    db.session.commit()
+    
+    # Fetch all appointments
+    all_appointments = Appointment.query.order_by(Appointment.created_at.desc()).all()
+    
+    # Separate into active and past appointments
+    active_appointments = [appt for appt in all_appointments if appt.status in ["pending", "confirmed"]]
+    past_appointments = [appt for appt in all_appointments if appt.status in ["closed", "rejected", "completed"]]
+    
+    return render_template(
+        "manage_appointments.html",
+        active_appointments=active_appointments,
+        past_appointments=past_appointments
+    )
 
 
 @app.route("/appointment/<int:appointment_id>/update_status", methods=["POST"])
