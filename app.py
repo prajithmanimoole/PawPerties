@@ -586,6 +586,35 @@ def add_property():
                 description=description,
             )
             blockchain.save_and_exit()
+            
+            # Sync to database: Find user by Aadhar or PAN and link property
+            property_owner = User.query.filter(
+                (User.aadhar == aadhar_no) | (User.pan == pan_no)
+            ).first()
+            
+            if property_owner:
+                # Check if property already exists in database
+                existing_property = Property.query.filter_by(
+                    property_key=property_key
+                ).first()
+                
+                if not existing_property:
+                    # Create new property record linked to user
+                    new_property = Property(
+                        property_key=property_key,
+                        user_id=property_owner.id,
+                        address=address,
+                        pincode=pincode,
+                        value=value,
+                        survey_no=survey_no,
+                    )
+                    db.session.add(new_property)
+                    db.session.commit()
+                    flash(
+                        f"Property linked to user {property_owner.full_name}'s profile.",
+                        "info",
+                    )
+            
             flash(
                 f"Property {property_key} registered successfully! Block #{block.index}",
                 "success",
@@ -642,6 +671,48 @@ def transfer_property():
                 registration_fee=registration_fee,
             )
             blockchain.save_and_exit()
+            
+            # Sync to database: Update property ownership
+            new_owner_user = User.query.filter(
+                (User.aadhar == new_owner_aadhar) | (User.pan == new_owner_pan)
+            ).first()
+            
+            if new_owner_user:
+                # Find existing property or create new one
+                existing_property = Property.query.filter_by(
+                    property_key=property_key
+                ).first()
+                
+                if existing_property:
+                    # Update ownership
+                    existing_property.user_id = new_owner_user.id
+                    # Update property details from blockchain
+                    property_data = blockchain.get_property(property_key)
+                    if property_data:
+                        existing_property.address = property_data.get("address", existing_property.address)
+                        existing_property.pincode = property_data.get("pincode", existing_property.pincode)
+                        existing_property.value = property_data.get("value", existing_property.value)
+                    db.session.commit()
+                else:
+                    # Create new property record for new owner
+                    property_data = blockchain.get_property(property_key)
+                    if property_data:
+                        new_property = Property(
+                            property_key=property_key,
+                            user_id=new_owner_user.id,
+                            address=property_data.get("address", ""),
+                            pincode=property_data.get("pincode", ""),
+                            value=property_data.get("value", 0),
+                            survey_no=property_data.get("survey_no", ""),
+                        )
+                        db.session.add(new_property)
+                        db.session.commit()
+                
+                flash(
+                    f"Property linked to new owner {new_owner_user.full_name}'s profile.",
+                    "info",
+                )
+            
             flash(
                 f"Property {property_key} transferred successfully! Block #{block.index}",
                 "success",
@@ -691,6 +762,48 @@ def inherit_property():
                 legal_heir_certificate_no=legal_heir_certificate_no,
             )
             blockchain.save_and_exit()
+            
+            # Sync to database: Update property ownership to heir
+            heir_user = User.query.filter(
+                (User.aadhar == heir_aadhar) | (User.pan == heir_pan)
+            ).first()
+            
+            if heir_user:
+                # Find existing property or create new one
+                existing_property = Property.query.filter_by(
+                    property_key=property_key
+                ).first()
+                
+                if existing_property:
+                    # Update ownership to heir
+                    existing_property.user_id = heir_user.id
+                    # Update property details from blockchain
+                    property_data = blockchain.get_property(property_key)
+                    if property_data:
+                        existing_property.address = property_data.get("address", existing_property.address)
+                        existing_property.pincode = property_data.get("pincode", existing_property.pincode)
+                        existing_property.value = property_data.get("value", existing_property.value)
+                    db.session.commit()
+                else:
+                    # Create new property record for heir
+                    property_data = blockchain.get_property(property_key)
+                    if property_data:
+                        new_property = Property(
+                            property_key=property_key,
+                            user_id=heir_user.id,
+                            address=property_data.get("address", ""),
+                            pincode=property_data.get("pincode", ""),
+                            value=property_data.get("value", 0),
+                            survey_no=property_data.get("survey_no", ""),
+                        )
+                        db.session.add(new_property)
+                        db.session.commit()
+                
+                flash(
+                    f"Property linked to heir {heir_user.full_name}'s profile.",
+                    "info",
+                )
+            
             flash(
                 f"Property {property_key} inheritance recorded! Block #{block.index}",
                 "success",
